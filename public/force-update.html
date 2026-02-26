@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Updating App...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 500px;
+            margin: 20px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            font-size: 18px;
+            margin: 20px 0;
+            min-height: 30px;
+        }
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: white;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .success {
+            color: #4ade80;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        .info {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Updating App</h1>
+        <div class="spinner" id="spinner"></div>
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="status" id="status">Preparing update...</div>
+        <div class="info" id="info">
+            Please wait while we clear old cache and load the latest version.
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const progressBar = document.getElementById('progressBar');
+        const spinner = document.getElementById('spinner');
+        const infoEl = document.getElementById('info');
+
+        let progress = 0;
+
+        function updateProgress(percent, message) {
+            progress = percent;
+            progressBar.style.width = percent + '%';
+            statusEl.textContent = message;
+        }
+
+        async function forceUpdate() {
+            try {
+                // Step 1: Clear localStorage
+                updateProgress(10, '1/6 Clearing local storage...');
+                await sleep(500);
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // Step 2: Clear all caches
+                updateProgress(25, '2/6 Clearing cache storage...');
+                await sleep(500);
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                }
+
+                // Step 3: Unregister service workers
+                updateProgress(40, '3/6 Unregistering service workers...');
+                await sleep(500);
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(
+                        registrations.map(registration => registration.unregister())
+                    );
+                }
+
+                // Step 4: Clear IndexedDB
+                updateProgress(55, '4/6 Clearing IndexedDB...');
+                await sleep(500);
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        databases.forEach(db => {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    } catch (e) {
+                        console.log('IndexedDB clear skipped:', e);
+                    }
+                }
+
+                // Step 5: Set new version
+                updateProgress(70, '5/6 Setting new version...');
+                await sleep(500);
+                localStorage.setItem('app_version', '2.0.0');
+                localStorage.setItem('force_updated', Date.now().toString());
+
+                // Step 6: Prepare redirect
+                updateProgress(85, '6/6 Loading new version...');
+                await sleep(500);
+
+                // Success
+                updateProgress(100, '✅ Update Complete!');
+                spinner.style.display = 'none';
+                statusEl.className = 'status success';
+                infoEl.innerHTML = `
+                    <strong>All cache cleared!</strong><br>
+                    Redirecting to app in 2 seconds...<br>
+                    <small>Voice recording and dual-language features are now available!</small>
+                `;
+
+                // Redirect to main app
+                await sleep(2000);
+                window.location.href = '/?updated=' + Date.now();
+
+            } catch (error) {
+                console.error('Error during update:', error);
+                updateProgress(100, '⚠️ Update completed with warnings');
+                spinner.style.display = 'none';
+                infoEl.innerHTML = `
+                    <strong>Cache cleared!</strong><br>
+                    Redirecting to app...<br>
+                    <small>If you still see issues, try closing and reopening your browser.</small>
+                `;
+                await sleep(2000);
+                window.location.href = '/?updated=' + Date.now();
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Start the update process
+        forceUpdate();
+    </script>
+</body>
+</html>

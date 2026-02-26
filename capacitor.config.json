@@ -1,0 +1,17 @@
+{
+  "appId": "com.edulearn.app",
+  "appName": "EduLearn",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#4F46E5",
+      "showSpinner": true,
+      "spinnerColor": "#ffffff"
+    }
+  }
+}

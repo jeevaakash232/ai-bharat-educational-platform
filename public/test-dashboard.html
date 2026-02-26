@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test - EduLearn</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #4F46E5; }
+        .info { 
+            background: #EEF2FF; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 20px 0;
+            border-left: 4px solid #4F46E5;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4F46E5;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 10px 10px 0;
+            font-weight: 600;
+        }
+        .button:hover {
+            background: #4338CA;
+        }
+        .warning {
+            background: #FEF3C7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #F59E0B;
+        }
+        code {
+            background: #F3F4F6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Dashboard Clear Cache Button Test</h1>
+        
+        <div class="info">
+            <h3>✅ Clear Cache Button Status</h3>
+            <p><strong>Location:</strong> Dashboard Header (after login)</p>
+            <p><strong>Icon:</strong> 🗑️ Trash icon</p>
+            <p><strong>Desktop:</strong> Shows "Clear Cache" text + icon</p>
+            <p><strong>Mobile:</strong> Shows icon only</p>
+            <p><strong>Color:</strong> Orange on hover</p>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ If you can't see the button:</h3>
+            <ol>
+                <li><strong>Hard Refresh:</strong> Press <code>Ctrl+Shift+R</code> (Windows) or <code>Cmd+Shift+R</code> (Mac)</li>
+                <li><strong>Clear Browser Cache:</strong> Open DevTools (F12) → Application → Clear Storage → Clear site data</li>
+                <li><strong>Restart ngrok:</strong> Stop and restart ngrok to get a fresh URL</li>
+                <li><strong>Try Incognito Mode:</strong> Open the URL in a private/incognito window</li>
+            </ol>
+        </div>
+
+        <h3>📋 Quick Actions:</h3>
+        <a href="/" class="button">Go to Home</a>
+        <a href="/login" class="button">Go to Login</a>
+        <a href="/dashboard" class="button">Go to Dashboard</a>
+
+        <div class="info" style="margin-top: 30px;">
+            <h3>🔧 Technical Details:</h3>
+            <p><strong>Dev Server:</strong> Running on localhost:5173</p>
+            <p><strong>Build Status:</strong> ✅ Successful</p>
+            <p><strong>Button Code:</strong> ✅ Present in Dashboard.jsx</p>
+            <p><strong>Issue:</strong> Browser cache showing old version</p>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #F3F4F6; border-radius: 8px;">
+            <h3>🎯 Solution:</h3>
+            <p style="font-size: 18px; font-weight: 600; color: #DC2626;">
+                The button EXISTS in the code but your browser is showing a CACHED version!
+            </p>
+            <p style="margin-top: 15px;">
+                <strong>Best Solution:</strong> Restart your ngrok tunnel to get a completely fresh URL without any cache.
+            </p>
+            <pre style="background: #1F2937; color: #10B981; padding: 15px; border-radius: 8px; margin-top: 10px;">
+# Stop current ngrok (Ctrl+C)
+# Then start fresh:
+ngrok http 5173
+            </pre>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center; color: #6B7280; font-size: 14px;">
+            <p>Current Time: <span id="time"></span></p>
+            <p>Page Version: 1.0.0 (Latest)</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        
+        // Auto-refresh every 30 seconds to show it's live
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

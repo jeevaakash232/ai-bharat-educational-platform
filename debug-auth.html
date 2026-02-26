@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduLearn Auth Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .danger {
+            background: #dc3545;
+        }
+
+        .danger:hover {
+            background: #c82333;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+
+        .user-item {
+            background: #f8f9fa;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>EduLearn Authentication Debug Tool</h1>
+
+        <div class="section">
+            <h2>Current User</h2>
+            <div id="currentUser">Loading...</div>
+            <button onclick="clearCurrentUser()">Clear Current User</button>
+        </div>
+
+        <div class="section">
+            <h2>Registered Users</h2>
+            <div id="registeredUsers">Loading...</div>
+            <button onclick="refreshData()">Refresh Data</button>
+            <button onclick="clearAllUsers()" class="danger">Clear All Users</button>
+        </div>
+
+        <div class="section">
+            <h2>Test Login</h2>
+            <input type="email" id="testEmail" placeholder="Email" style="margin: 5px; padding: 8px;">
+            <input type="password" id="testPassword" placeholder="Password" style="margin: 5px; padding: 8px;">
+            <select id="testUserType" style="margin: 5px; padding: 8px;">
+                <option value="student">Student</option>
+                <option value="parent">Parent</option>
+                <option value="teacher">Teacher</option>
+            </select>
+            <button onclick="testLogin()">Test Login</button>
+        </div>
+
+        <div class="section">
+            <h2>Quick Register</h2>
+            <input type="email" id="regEmail" placeholder="Email" style="margin: 5px; padding: 8px;">
+            <input type="password" id="regPassword" placeholder="Password" style="margin: 5px; padding: 8px;">
+            <input type="text" id="regName" placeholder="Full Name" style="margin: 5px; padding: 8px;">
+            <select id="regUserType" style="margin: 5px; padding: 8px;">
+                <option value="student">Student</option>
+                <option value="parent">Parent</option>
+                <option value="teacher">Teacher</option>
+            </select>
+            <button onclick="quickRegister()">Quick Register</button>
+        </div>
+    </div>
+
+    <script>
+        function getCurrentUser() {
+            try {
+                const user = localStorage.getItem('edulearn_user');
+                return user ? JSON.parse(user) : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function getRegisteredUsers() {
+            try {
+                const users = localStorage.getItem('registeredUsers');
+                return users ? JSON.parse(users) : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function saveRegisteredUsers(users) {
+            try {
+                localStorage.setItem('registeredUsers', JSON.stringify(users));
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function displayCurrentUser() {
+            const user = getCurrentUser();
+            const div = document.getElementById('currentUser');
+
+            if (user) {
+                div.innerHTML = `
+                    <div class="user-item">
+                        <strong>Email:</strong> ${user.email}<br>
+                        <strong>Name:</strong> ${user.fullName}<br>
+                        <strong>User Type:</strong> ${user.userType}<br>
+                        <strong>Registered:</strong> ${user.registeredAt || 'Unknown'}
+                    </div>
+                `;
+            } else {
+                div.innerHTML = '<p>No current user logged in</p>';
+            }
+        }
+
+        function displayRegisteredUsers() {
+            const users = getRegisteredUsers();
+            const div = document.getElementById('registeredUsers');
+
+            if (users.length === 0) {
+                div.innerHTML = '<p>No registered users found</p>';
+                return;
+            }
+
+            let html = `<p><strong>Total users:</strong> ${users.length}</p>`;
+            users.forEach((user, index) => {
+                html += `
+                    <div class="user-item">
+                        <strong>User ${index + 1}:</strong><br>
+                        <strong>Email:</strong> ${user.email}<br>
+                        <strong>Name:</strong> ${user.fullName}<br>
+                        <strong>User Type:</strong> ${user.userType}<br>
+                        <strong>Password:</strong> ${user.password}<br>
+                        <strong>Registered:</strong> ${user.registeredAt || 'Unknown'}
+                        <button onclick="deleteUser('${user.email}')" class="danger" style="margin-left: 10px;">Delete</button>
+                    </div>
+                `;
+            });
+
+            div.innerHTML = html;
+        }
+
+        function clearCurrentUser() {
+            localStorage.removeItem('edulearn_user');
+            displayCurrentUser();
+            alert('Current user cleared!');
+        }
+
+        function clearAllUsers() {
+            if (confirm('Are you sure you want to delete ALL registered users? This cannot be undone!')) {
+                localStorage.removeItem('registeredUsers');
+                localStorage.removeItem('edulearn_user');
+                refreshData();
+                alert('All users cleared!');
+            }
+        }
+
+        function deleteUser(email) {
+            if (confirm(`Delete user with email: ${email}?`)) {
+                const users = getRegisteredUsers();
+                const filteredUsers = users.filter(u => u.email !== email);
+                saveRegisteredUsers(filteredUsers);
+                refreshData();
+                alert('User deleted!');
+            }
+        }
+
+        function testLogin() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            const userType = document.getElementById('testUserType').value;
+
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            const users = getRegisteredUsers();
+            const user = users.find(u =>
+                u.email === email &&
+                u.password === password &&
+                u.userType === userType
+            );
+
+            if (user) {
+                alert('✅ Login would succeed!');
+                localStorage.setItem('edulearn_user', JSON.stringify(user));
+                refreshData();
+            } else {
+                alert('❌ Login would fail! Check your credentials and user type.');
+
+                // Show matching users for debugging
+                const emailMatches = users.filter(u => u.email === email);
+                if (emailMatches.length > 0) {
+                    let debug = 'Users with this email:\\n';
+                    emailMatches.forEach(u => {
+                        debug += `- Type: ${u.userType}, Password: ${u.password}\\n`;
+                    });
+                    alert(debug);
+                }
+            }
+        }
+
+        function quickRegister() {
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const name = document.getElementById('regName').value;
+            const userType = document.getElementById('regUserType').value;
+
+            if (!email || !password || !name) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            const users = getRegisteredUsers();
+
+            // Check if user already exists
+            if (users.find(u => u.email === email)) {
+                alert('User with this email already exists!');
+                return;
+            }
+
+            const newUser = {
+                id: Date.now(),
+                email: email,
+                password: password,
+                fullName: name,
+                userType: userType,
+                registeredAt: new Date().toISOString()
+            };
+
+            users.push(newUser);
+            saveRegisteredUsers(users);
+            refreshData();
+            alert('User registered successfully!');
+
+            // Clear form
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regName').value = '';
+        }
+
+        function refreshData() {
+            displayCurrentUser();
+            displayRegisteredUsers();
+        }
+
+        // Initialize
+        refreshData();
+    </script>
+</body>
+
+</html>

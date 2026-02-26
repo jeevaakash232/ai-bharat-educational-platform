@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshoot - EduLearn</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #4F46E5; margin-bottom: 10px; }
+        h2 { color: #4F46E5; margin-top: 30px; font-size: 20px; }
+        h3 { color: #6366F1; margin-top: 20px; font-size: 18px; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { background: #D1FAE5; color: #065F46; }
+        .error { background: #FEE2E2; color: #991B1B; }
+        .warning { background: #FEF3C7; color: #92400E; }
+        .info { background: #DBEAFE; color: #1E40AF; }
+        button {
+            padding: 12px 24px;
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #4338CA; }
+        code {
+            background: #F3F4F6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 10px; margin: 5px 0; background: #F9FAFB; border-radius: 5px; }
+        .checklist li:before { content: "☐ "; font-size: 18px; margin-right: 10px; }
+        .checklist li.checked:before { content: "✓ "; color: #10B981; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 EduLearn Troubleshooting</h1>
+        <p>Diagnose and fix common issues</p>
+    </div>
+
+    <div class="card">
+        <h2>📊 System Status</h2>
+        <div id="browserCheck" class="status info">Checking browser...</div>
+        <div id="versionCheck" class="status info">Checking version...</div>
+        <div id="storageCheck" class="status info">Checking storage...</div>
+        <div id="cacheCheck" class="status info">Checking cache...</div>
+    </div>
+
+    <div class="card">
+        <h2>🎯 Quick Fixes</h2>
+        
+        <h3>1. Fix Version Mismatch</h3>
+        <p>If you see "New Version Available" notification blocking buttons:</p>
+        <button onclick="fixVersion()">Fix Version (Set to 3.0.0)</button>
+        <div id="versionResult"></div>
+
+        <h3>2. Clear All Cache</h3>
+        <p>If buttons or features are not visible:</p>
+        <button onclick="clearAllCache()">Clear Cache & Reload</button>
+        <div id="cacheResult"></div>
+
+        <h3>3. Reset Application</h3>
+        <p>Nuclear option - clears everything except user login:</p>
+        <button onclick="resetApp()" style="background: #DC2626;">Reset App (Keep Login)</button>
+        <div id="resetResult"></div>
+    </div>
+
+    <div class="card">
+        <h2>✅ Feature Checklist</h2>
+        <p>After fixing, verify these features are visible:</p>
+        <ul class="checklist">
+            <li>Dashboard: Clear Cache button (🗑️) in header</li>
+            <li>Dashboard: Settings button (⚙️) in header</li>
+            <li>Dashboard: Logout button (🚪) in header</li>
+            <li>AI Assistant: Notes button (📝) in header</li>
+            <li>Book Viewer: Notes button (📝) in header</li>
+            <li>Notes Panel: Rich text editor with toolbar</li>
+            <li>Notes Panel: Export buttons (PDF, DOCX, TXT)</li>
+            <li>Voice Recording: Works in AI Assistant</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>🌐 Browser Compatibility</h2>
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This application works best in:
+            <ul>
+                <li><strong>Google Chrome</strong> (Recommended)</li>
+                <li><strong>Microsoft Edge</strong> (Chromium-based)</li>
+                <li><strong>Brave Browser</strong></li>
+            </ul>
+            <p style="margin-top: 10px;">
+                <strong>Limited support:</strong> Firefox, Safari<br>
+                <strong>Not supported:</strong> Internet Explorer, older browsers
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📱 ngrok Free Tier Notice</h2>
+        <div class="info">
+            <p><strong>Why only Chrome Incognito works:</strong></p>
+            <p>ngrok free tier shows a warning page on first visit. Some browsers cache this warning page aggressively.</p>
+            <p><strong>Solutions:</strong></p>
+            <ol>
+                <li>Use Chrome or Edge (best compatibility)</li>
+                <li>Clear browser cache completely</li>
+                <li>Use Incognito/Private mode</li>
+                <li>Click "Visit Site" on ngrok warning page</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🔗 Quick Links</h2>
+        <button onclick="window.location.href='/'">Home</button>
+        <button onclick="window.location.href='/login'">Login</button>
+        <button onclick="window.location.href='/dashboard'">Dashboard</button>
+        <button onclick="window.location.href='/fix-version.html'">Version Fix Page</button>
+        <button onclick="window.location.href='/ngrok-landing.html'">Landing Page</button>
+    </div>
+
+    <script>
+        // Check browser
+        function checkBrowser() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            let status = 'error';
+            
+            if (ua.includes('Chrome') && !ua.includes('Edg')) {
+                browser = 'Google Chrome';
+                status = 'success';
+            } else if (ua.includes('Edg')) {
+                browser = 'Microsoft Edge';
+                status = 'success';
+            } else if (ua.includes('Firefox')) {
+                browser = 'Firefox';
+                status = 'warning';
+            } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+                browser = 'Safari';
+                status = 'warning';
+            }
+            
+            const el = document.getElementById('browserCheck');
+            el.className = `status ${status}`;
+            el.textContent = `Browser: ${browser} ${status === 'success' ? '✓' : status === 'warning' ? '⚠️' : '✗'}`;
+        }
+
+        // Check version
+        function checkVersion() {
+            const version = localStorage.getItem('app_version');
+            const el = document.getElementById('versionCheck');
+            
+            if (version === '3.0.0') {
+                el.className = 'status success';
+                el.textContent = `Version: ${version} ✓`;
+            } else {
+                el.className = 'status error';
+                el.textContent = `Version: ${version || 'Not set'} ✗ (Expected: 3.0.0)`;
+            }
+        }
+
+        // Check storage
+        function checkStorage() {
+            const el = document.getElementById('storageCheck');
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                el.className = 'status success';
+                el.textContent = 'LocalStorage: Working ✓';
+            } catch (e) {
+                el.className = 'status error';
+                el.textContent = 'LocalStorage: Not available ✗';
+            }
+        }
+
+        // Check cache
+        async function checkCache() {
+            const el = document.getElementById('cacheCheck');
+            if ('caches' in window) {
+                const names = await caches.keys();
+                el.className = 'status info';
+                el.textContent = `Cache: ${names.length} cache(s) found`;
+            } else {
+                el.className = 'status warning';
+                el.textContent = 'Cache API: Not available';
+            }
+        }
+
+        // Fix version
+        async function fixVersion() {
+            const result = document.getElementById('versionResult');
+            result.className = 'status info';
+            result.textContent = 'Fixing version...';
+            
+            localStorage.setItem('app_version', '3.0.0');
+            
+            result.className = 'status success';
+            result.textContent = '✓ Version set to 3.0.0! Refresh the page to see changes.';
+            
+            setTimeout(() => checkVersion(), 500);
+        }
+
+        // Clear cache
+        async function clearAllCache() {
+            const result = document.getElementById('cacheResult');
+            result.className = 'status info';
+            result.textContent = 'Clearing cache...';
+            
+            try {
+                // Clear caches
+                if ('caches' in window) {
+                    const names = await caches.keys();
+                    await Promise.all(names.map(n => caches.delete(n)));
+                }
+                
+                // Unregister service workers
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map(r => r.unregister()));
+                }
+                
+                result.className = 'status success';
+                result.textContent = '✓ Cache cleared! Reloading in 2 seconds...';
+                
+                setTimeout(() => window.location.reload(true), 2000);
+            } catch (error) {
+                result.className = 'status error';
+                result.textContent = '✗ Error: ' + error.message;
+            }
+        }
+
+        // Reset app
+        async function resetApp() {
+            if (!confirm('This will clear all app data except your login. Continue?')) {
+                return;
+            }
+            
+            const result = document.getElementById('resetResult');
+            result.className = 'status info';
+            result.textContent = 'Resetting application...';
+            
+            try {
+                // Save user data
+                const userData = localStorage.getItem('edulearn_user');
+                const registeredUsers = localStorage.getItem('registeredUsers');
+                
+                // Clear everything
+                localStorage.clear();
+                
+                // Restore user data
+                if (userData) localStorage.setItem('edulearn_user', userData);
+                if (registeredUsers) localStorage.setItem('registeredUsers', registeredUsers);
+                
+                // Set correct version
+                localStorage.setItem('app_version', '3.0.0');
+                
+                // Clear caches
+                if ('caches' in window) {
+                    const names = await caches.keys();
+                    await Promise.all(names.map(n => caches.delete(n)));
+                }
+                
+                // Unregister service workers
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map(r => r.unregister()));
+                }
+                
+                result.className = 'status success';
+                result.textContent = '✓ App reset complete! Reloading...';
+                
+                setTimeout(() => window.location.href = '/', 2000);
+            } catch (error) {
+                result.className = 'status error';
+                result.textContent = '✗ Error: ' + error.message;
+            }
+        }
+
+        // Run checks on load
+        checkBrowser();
+        checkVersion();
+        checkStorage();
+        checkCache();
+    </script>
+</body>
+</html>

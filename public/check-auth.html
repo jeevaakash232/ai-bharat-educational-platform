@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Database Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 30px; }
+        .data-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .btn {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #4338ca; }
+        .btn.danger { background: #ef4444; }
+        .btn.danger:hover { background: #dc2626; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th { background: #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Authentication Database Check</h1>
+        <p>Check and fix login/signup database issues</p>
+        
+        <div>
+            <button class="btn" onclick="checkDatabase()">🔍 Check Database</button>
+            <button class="btn" onclick="fixDatabase()">🔧 Fix Database</button>
+            <button class="btn danger" onclick="clearAll()">🗑️ Clear All Data</button>
+            <button class="btn" onclick="window.location.href='/'">🏠 Go to App</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <h2>📊 Database Status</h2>
+        <div id="dbStatus"></div>
+        
+        <h2>👤 Current User</h2>
+        <div id="currentUser" class="data-box">Not checked yet</div>
+        
+        <h2>👥 Registered Users</h2>
+        <div id="registeredUsers" class="data-box">Not checked yet</div>
+        
+        <h2>📋 All Users Table</h2>
+        <div id="usersTable"></div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function checkDatabase() {
+            const currentUser = localStorage.getItem('edulearn_user');
+            const registeredUsers = localStorage.getItem('registeredUsers');
+            
+            // Display current user
+            const currentUserDiv = document.getElementById('currentUser');
+            if (currentUser) {
+                try {
+                    const user = JSON.parse(currentUser);
+                    currentUserDiv.textContent = JSON.stringify(user, null, 2);
+                } catch (e) {
+                    currentUserDiv.textContent = 'ERROR: ' + e.message + '\n\n' + currentUser;
+                }
+            } else {
+                currentUserDiv.textContent = 'No current user (not logged in)';
+            }
+            
+            // Display registered users
+            const registeredUsersDiv = document.getElementById('registeredUsers');
+            if (registeredUsers) {
+                try {
+                    const users = JSON.parse(registeredUsers);
+                    registeredUsersDiv.textContent = JSON.stringify(users, null, 2);
+                    
+                    // Create table
+                    createUsersTable(users);
+                    
+                    // Check for issues
+                    checkForIssues(currentUser, users);
+                } catch (e) {
+                    registeredUsersDiv.textContent = 'ERROR: ' + e.message + '\n\n' + registeredUsers;
+                    showStatus('Error parsing registered users!', 'error');
+                }
+            } else {
+                registeredUsersDiv.textContent = 'No registered users found';
+                showStatus('No users registered yet', 'warning');
+            }
+        }
+
+        function createUsersTable(users) {
+            const tableDiv = document.getElementById('usersTable');
+            if (!users || users.length === 0) {
+                tableDiv.innerHTML = '<p>No users to display</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            html += '<th>ID</th><th>Name</th><th>Email</th><th>Type</th><th>State</th><th>Medium</th><th>Class</th>';
+            html += '</tr></thead><tbody>';
+            
+            users.forEach(user => {
+                html += '<tr>';
+                html += `<td>${user.id || 'N/A'}</td>`;
+                html += `<td>${user.name || 'N/A'}</td>`;
+                html += `<td>${user.email || 'N/A'}</td>`;
+                html += `<td>${user.userType || 'N/A'}</td>`;
+                html += `<td>${user.selectedState || 'N/A'}</td>`;
+                html += `<td>${user.mediumName || user.selectedMedium || 'N/A'}</td>`;
+                html += `<td>${user.class || 'N/A'}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            tableDiv.innerHTML = html;
+        }
+
+        function checkForIssues(currentUserStr, registeredUsers) {
+            const statusDiv = document.getElementById('dbStatus');
+            let issues = [];
+            
+            // Check if current user exists in registered users
+            if (currentUserStr) {
+                try {
+                    const currentUser = JSON.parse(currentUserStr);
+                    const found = registeredUsers.find(u => u.email === currentUser.email);
+                    if (!found) {
+                        issues.push('⚠️ Current user not found in registered users database');
+                    }
+                } catch (e) {
+                    issues.push('❌ Current user data is corrupted');
+                }
+            }
+            
+            // Check for duplicate emails
+            const emails = registeredUsers.map(u => u.email);
+            const duplicates = emails.filter((email, index) => emails.indexOf(email) !== index);
+            if (duplicates.length > 0) {
+                issues.push(`⚠️ Duplicate emails found: ${duplicates.join(', ')}`);
+            }
+            
+            // Check for missing required fields
+            registeredUsers.forEach((user, index) => {
+                if (!user.email) issues.push(`❌ User ${index + 1} missing email`);
+                if (!user.password) issues.push(`❌ User ${index + 1} missing password`);
+                if (!user.userType) issues.push(`❌ User ${index + 1} missing userType`);
+            });
+            
+            if (issues.length === 0) {
+                statusDiv.innerHTML = '<div class="status success">✅ Database looks good! No issues found.</div>';
+                showStatus('Database check complete - no issues found', 'success');
+            } else {
+                statusDiv.innerHTML = '<div class="status error">' + issues.join('<br>') + '</div>';
+                showStatus('Issues found in database!', 'error');
+            }
+        }
+
+        function fixDatabase() {
+            const currentUserStr = localStorage.getItem('edulearn_user');
+            const registeredUsersStr = localStorage.getItem('registeredUsers');
+            
+            if (!registeredUsersStr) {
+                showStatus('No registered users to fix', 'warning');
+                return;
+            }
+            
+            try {
+                let registeredUsers = JSON.parse(registeredUsersStr);
+                let fixed = false;
+                
+                // Fix: Add current user to registered users if missing
+                if (currentUserStr) {
+                    const currentUser = JSON.parse(currentUserStr);
+                    const found = registeredUsers.find(u => u.email === currentUser.email);
+                    if (!found) {
+                        registeredUsers.push(currentUser);
+                        fixed = true;
+                        showStatus('Added current user to registered users', 'success');
+                    }
+                }
+                
+                // Fix: Remove duplicates
+                const uniqueUsers = [];
+                const seenEmails = new Set();
+                registeredUsers.forEach(user => {
+                    if (!seenEmails.has(user.email)) {
+                        seenEmails.add(user.email);
+                        uniqueUsers.push(user);
+                    } else {
+                        fixed = true;
+                    }
+                });
+                
+                if (fixed) {
+                    localStorage.setItem('registeredUsers', JSON.stringify(uniqueUsers));
+                    showStatus('Database fixed! Refresh to see changes.', 'success');
+                    setTimeout(() => checkDatabase(), 500);
+                } else {
+                    showStatus('No fixes needed', 'success');
+                }
+            } catch (e) {
+                showStatus('Error fixing database: ' + e.message, 'error');
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Clear ALL authentication data? You will be logged out and all users will be deleted!')) {
+                localStorage.removeItem('edulearn_user');
+                localStorage.removeItem('registeredUsers');
+                showStatus('All data cleared!', 'success');
+                setTimeout(() => checkDatabase(), 500);
+            }
+        }
+
+        // Auto-check on load
+        checkDatabase();
+    </script>
+</body>
+</html>

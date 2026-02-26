@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Clear Cache - EduLearn</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        .btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            display: block;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .back-btn {
+            background: #6366f1;
+            margin-top: 10px;
+        }
+        .back-btn:hover {
+            background: #4f46e5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔄</div>
+        <h1>Clear App Cache</h1>
+        <p>If you're seeing an old version of the app, click the button below to clear all cached data and reload with the latest version.</p>
+        
+        <button id="clearBtn" class="btn" onclick="clearAllCache()">
+            🗑️ Clear Cache & Reload
+        </button>
+        
+        <button class="btn back-btn" onclick="goToApp()">
+            ← Back to App
+        </button>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        async function clearAllCache() {
+            const btn = document.getElementById('clearBtn');
+            const status = document.getElementById('status');
+            
+            btn.textContent = '⏳ Clearing cache...';
+            btn.disabled = true;
+            status.style.display = 'none';
+            
+            try {
+                // Step 1: Clear localStorage and sessionStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                console.log('✅ Storage cleared');
+                
+                // Step 2: Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    console.log('Found caches:', cacheNames);
+                    await Promise.all(cacheNames.map(name => {
+                        console.log('Deleting cache:', name);
+                        return caches.delete(name);
+                    }));
+                    console.log('✅ All caches cleared');
+                }
+                
+                // Step 3: Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    console.log('Found service workers:', registrations.length);
+                    await Promise.all(registrations.map(reg => {
+                        console.log('Unregistering service worker');
+                        return reg.unregister();
+                    }));
+                    console.log('✅ Service workers unregistered');
+                }
+                
+                // Step 4: Set new version marker
+                localStorage.setItem('app_version', '2.0.0');
+                localStorage.setItem('cache_cleared_at', new Date().toISOString());
+                
+                // Success message
+                status.className = 'status success';
+                status.textContent = '✅ Cache cleared successfully! Redirecting to app...';
+                btn.textContent = '✅ Done!';
+                
+                // Redirect to main app
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                status.className = 'status error';
+                status.textContent = '⚠️ Some cache may remain, but reloading anyway...';
+                btn.textContent = '🔄 Reloading...';
+                
+                // Reload anyway
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        }
+        
+        function goToApp() {
+            window.location.href = '/';
+        }
+        
+        // Auto-clear if URL has ?auto=true parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('auto') === 'true') {
+            setTimeout(() => {
+                clearAllCache();
+            }, 500);
+        }
+    </script>
+</body>
+</html>
