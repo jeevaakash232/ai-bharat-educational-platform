@@ -198,18 +198,27 @@ export async function listVideos() {
 /**
  * Get presigned URL for a video (for streaming/downloading)
  */
-export async function getVideoUrl(key, expiresIn = 3600) {
+export async function getVideoUrl(key, expiresIn = 14400) { // 4 hours = 14400 seconds
   try {
     const client = getS3Client();
     const bucketName = process.env.S3_BUCKET_NAME || 'edulearn-books-storage';
     
     const command = new GetObjectCommand({
       Bucket: bucketName,
-      Key: key
+      Key: key,
+      // Add response headers for CORS and video streaming
+      ResponseCacheControl: 'no-cache',
+      ResponseContentType: 'video/mp4'
     });
     
-    const url = await getSignedUrl(client, command, { expiresIn });
+    const url = await getSignedUrl(client, command, { 
+      expiresIn,
+      // These headers will be included in the presigned URL
+      unhoistableHeaders: new Set(['x-amz-server-side-encryption'])
+    });
+    
     console.log('✅ Generated presigned URL for video:', key);
+    console.log('   Expires in:', expiresIn, 'seconds (', Math.floor(expiresIn / 3600), 'hours)');
     
     return url;
   } catch (error) {
