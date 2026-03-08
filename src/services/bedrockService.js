@@ -1,7 +1,8 @@
 // Secure Bedrock Service - Calls backend API instead of exposing AWS credentials
 import axios from 'axios';
+import { API_BASE_URL } from '../config.js';
 
-const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
+const BACKEND_API_URL = `${API_BASE_URL}/api`;
 
 /**
  * Get AI response from backend (secure - no AWS credentials exposed)
@@ -12,6 +13,7 @@ const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhos
 export const getBedrockResponse = async (userMessage, userContext = null) => {
   try {
     console.log('🚀 Sending message to secure backend API...');
+    console.log('🔗 Backend URL:', BACKEND_API_URL);
     
     const response = await axios.post(`${BACKEND_API_URL}/chat`, {
       message: userMessage,
@@ -42,12 +44,14 @@ Please try again or contact support.`;
 
 **Error**: Cannot connect to AI backend server
 
-**To fix:**
-1. Make sure the backend server is running: \`cd backend && npm start\`
-2. Check if backend is running on http://localhost:3001
-3. Verify VITE_BACKEND_API_URL in .env file
+**Backend URL**: ${BACKEND_API_URL}
 
-**Current backend URL**: ${BACKEND_API_URL}`;
+**Possible causes:**
+1. Backend server is starting up (wait 30-60 seconds for cold start)
+2. Network connectivity issue
+3. Backend service is down
+
+Please try again in a moment.`;
     } else {
       return `❌ **Unexpected Error**
 
