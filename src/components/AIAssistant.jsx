@@ -1,16 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, Send, Mic, Image, Youtube, BookOpen, Loader, StickyNote } from 'lucide-react'
-import { getEnhancedGroqResponse } from '../services/enhancedGroqService'
-import { getMultilingualResponse } from '../services/groqMultilingualService'
+import { ArrowLeft, Send, Mic, Image, Youtube, BookOpen, Loader, StickyNote, Clock } from 'lucide-react'
+import { getBedrockResponse } from '../services/bedrockService'
 import SubjectHelper from './SubjectHelper'
 import { VoiceRecognitionService, getLanguageCode } from '../services/voiceService'
 import NotesPanel from './NotesPanel'
+import { historyService } from '../services/historyService'
+import { useBilingualAI } from '../hooks/useBilingualAI'
+import BilingualMessage from './BilingualMessage'
 
 const AIAssistant = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { getBilingual, userLanguage } = useBilingualAI()
   
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
@@ -21,6 +24,7 @@ const AIAssistant = () => {
   const [showNotes, setShowNotes] = useState(false)
   const fileInputRef = useRef(null)
   const voiceRecognition = useRef(null)
+  const conversationIdRef = useRef(`conv-${Date.now()}`)
 
   useEffect(() => {
     if (!user) {
@@ -45,26 +49,46 @@ const AIAssistant = () => {
       const initialMessage = {
         id: 1,
         type: 'ai',
-        content: `Hello ${user.name}! I'm your comprehensive AI learning assistant. I can help you with ALL your Class ${user.class || ''} subjects:
+        content: `**Hello ${user.name}! 👋**
 
-${user.subjects ? `
-📚 **Your Subjects:** ${user.subjects.join(', ')}
+I'm your AI learning assistant powered by AWS Bedrock (Claude AI). I provide **step-by-step explanations** for all your Class ${user.class || ''} subjects.
 
-I'm specialized in:
-${user.subjects.map(subject => `• **${subject}**: Detailed explanations, problem solving, and concept clarification`).join('\n')}
-` : ''}
+${user.subjects ? `**📚 Your Subjects:** ${user.subjects.join(', ')}` : ''}
 
-🎯 **I can help with:**
-• Subject-specific questions and explanations
-• Step-by-step problem solving
-• Study strategies and exam preparation
-• Homework and assignment assistance
-• Concept connections across subjects
+**🎯 What I Can Help With:**
 
-💡 **Special Features:**
-• 🧮 Advanced Math Calculator for complex calculations
-• 📖 Subject-specific curriculum guidance
-• 🎓 Personalized learning based on your class and board
+**For Mathematics:** 📐
+• Complete step-by-step solutions
+• All working steps shown clearly
+• Formulas and key concepts explained
+• Common mistakes highlighted
+• Perfect for exam preparation
+
+**For Science:** 🔬
+• Clear concept explanations
+• Real-world examples
+• Diagrams and illustrations described
+• Complex topics simplified
+
+**For Languages:** 📖
+• Grammar rules explained
+• Literature analysis
+• Writing assistance
+• Comprehension help
+
+**For All Subjects:**
+• Homework help
+• Exam preparation
+• Concept clarification
+• Practice problems
+
+**⚠️ Important:** I only answer questions related to your educational subjects. I cannot help with personal advice, current events, entertainment, or non-educational topics.
+
+**💡 Try asking:**
+• "Solve: 2x + 5 = 15 (show all steps)"
+• "Explain photosynthesis in simple terms"
+• "What is Newton's Second Law?"
+• "Help me understand this grammar rule"
 
 How can I help you learn today?`
       }
@@ -86,66 +110,68 @@ How can I help you learn today?`
     }
 
     setMessages(prev => [...prev, userMessage])
+    const currentInput = inputText
     setInputText('')
     setIsLoading(true)
 
     try {
-      console.log('🚀 Sending message to AI:', inputText)
+      console.log('🚀 Sending message to AWS Bedrock:', currentInput)
       console.log('👤 User context:', user)
       
-      // Determine user's language from medium
-      let userLanguage = 'English'
-      if (user.mediumName) {
-        const mediumLower = user.mediumName.toLowerCase()
-        if (mediumLower.includes('tamil')) userLanguage = 'Tamil'
-        else if (mediumLower.includes('telugu')) userLanguage = 'Telugu'
-        else if (mediumLower.includes('hindi')) userLanguage = 'Hindi'
-        else if (mediumLower.includes('kannada')) userLanguage = 'Kannada'
-        else if (mediumLower.includes('malayalam')) userLanguage = 'Malayalam'
-        else if (mediumLower.includes('bengali')) userLanguage = 'Bengali'
-        else if (mediumLower.includes('marathi')) userLanguage = 'Marathi'
-        else if (mediumLower.includes('gujarati')) userLanguage = 'Gujarati'
-        else if (mediumLower.includes('punjabi')) userLanguage = 'Punjabi'
-      }
+      // Get response from AWS Bedrock with subject restrictions
+      const response = await getBedrockResponse(currentInput, {
+        name: user?.name,
+        class: user?.class,
+        board: user?.board,
+        subjects: user?.subjects
+      })
       
-      // Get multilingual response (both native language and English)
-      const response = await getMultilingualResponse(inputText, userLanguage, user)
+      console.log('🤖 AWS Bedrock Response received')
       
-      console.log('🤖 Multilingual Response received:', response)
-      
-      if (!response || (!response.nativeLanguage && !response.english)) {
+      if (!response) {
         throw new Error('Empty AI response')
       }
       
-      // Format the dual-language response
-      const formattedResponse = `📝 **Answer in ${userLanguage}:**
-
-${response.nativeLanguage}
-
----
-
-📝 **Answer in English:**
-
-${response.english}`
+      // Get bilingual version of the response
+      const bilingualResponse = await getBilingual(response)
       
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: formattedResponse
+        content: response,
+        bilingual: bilingualResponse
       }
       
       setMessages(prev => [...prev, aiMessage])
+
+      // Track AI conversation
+      try {
+        historyService.setUser(user.email || user.id)
+        await historyService.trackAIConversation({
+          sessionId: conversationIdRef.current,
+          subject: 'General',
+          messages: [
+            { role: 'user', content: currentInput, timestamp: new Date().toISOString() },
+            { role: 'assistant', content: response, timestamp: new Date().toISOString() }
+          ],
+          startTime: new Date().toISOString(),
+          duration: 0
+        })
+        console.log('💬 AI conversation tracked')
+      } catch (error) {
+        console.error('Error tracking AI conversation:', error)
+      }
     } catch (error) {
-      console.error('❌ AI Error:', error)
+      console.error('❌ AWS Bedrock Error:', error)
       
       const errorMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: `🔧 **AI Error**
+        content: `🔧 **AWS Bedrock Error**
 
 **Error**: ${error.message}
 
-Please try again or use a different question.`
+Please try again or rephrase your question.`
       }
       setMessages(prev => [...prev, errorMessage])
     }
@@ -222,20 +248,11 @@ Please try again or use a different question.`
     setVoiceError(null)
     setIsRecording(true)
 
-    // Determine language based on user's medium or default to English
-    let languageCode = 'en-IN'
-    if (user.mediumName) {
-      const mediumLower = user.mediumName.toLowerCase()
-      if (mediumLower.includes('tamil')) languageCode = 'ta-IN'
-      else if (mediumLower.includes('hindi')) languageCode = 'hi-IN'
-      else if (mediumLower.includes('telugu')) languageCode = 'te-IN'
-      else if (mediumLower.includes('kannada')) languageCode = 'kn-IN'
-      else if (mediumLower.includes('malayalam')) languageCode = 'ml-IN'
-      else if (mediumLower.includes('bengali')) languageCode = 'bn-IN'
-      else if (mediumLower.includes('marathi')) languageCode = 'mr-IN'
-      else if (mediumLower.includes('gujarati')) languageCode = 'gu-IN'
-      else if (mediumLower.includes('punjabi')) languageCode = 'pa-IN'
-    }
+    // Determine language based on user's medium using the voice service helper
+    const userLanguage = user.mediumName ? user.mediumName.replace(' Medium', '') : 'English'
+    const languageCode = getLanguageCode(userLanguage)
+    
+    console.log('🎤 Starting voice recognition for:', userLanguage, '→', languageCode)
 
     voiceRecognition.current.startListening(
       languageCode,
@@ -257,43 +274,22 @@ Please try again or use a different question.`
         setIsLoading(true)
 
         try {
-          // Determine user's language
-          let userLanguage = 'English'
-          if (user.mediumName) {
-            const mediumLower = user.mediumName.toLowerCase()
-            if (mediumLower.includes('tamil')) userLanguage = 'Tamil'
-            else if (mediumLower.includes('telugu')) userLanguage = 'Telugu'
-            else if (mediumLower.includes('hindi')) userLanguage = 'Hindi'
-            else if (mediumLower.includes('kannada')) userLanguage = 'Kannada'
-            else if (mediumLower.includes('malayalam')) userLanguage = 'Malayalam'
-            else if (mediumLower.includes('bengali')) userLanguage = 'Bengali'
-            else if (mediumLower.includes('marathi')) userLanguage = 'Marathi'
-            else if (mediumLower.includes('gujarati')) userLanguage = 'Gujarati'
-            else if (mediumLower.includes('punjabi')) userLanguage = 'Punjabi'
-          }
-          
-          // Get multilingual response
-          const response = await getMultilingualResponse(transcript, userLanguage, user)
-          
-          // Format dual-language response
-          const formattedResponse = `📝 **Answer in ${userLanguage}:**
-
-${response.nativeLanguage}
-
----
-
-📝 **Answer in English:**
-
-${response.english}`
+          // Get response from AWS Bedrock
+          const response = await getBedrockResponse(transcript, {
+            name: user?.name,
+            class: user?.class,
+            board: user?.board,
+            subjects: user?.subjects
+          })
           
           const aiMessage = {
             id: Date.now() + 1,
             type: 'ai',
-            content: formattedResponse
+            content: response
           }
           setMessages(prev => [...prev, aiMessage])
         } catch (error) {
-          console.error('❌ AI Error:', error)
+          console.error('❌ AWS Bedrock Error:', error)
           const errorMessage = {
             id: Date.now() + 1,
             type: 'ai',
@@ -348,17 +344,27 @@ ${response.english}`
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setShowNotes(!showNotes)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                showNotes 
-                  ? 'bg-indigo-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <StickyNote className="h-5 w-5" />
-              <span className="hidden md:inline">Notes</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <Link
+                to="/ai-history"
+                className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition-colors"
+                title="View AI Chat History"
+              >
+                <Clock className="h-5 w-5" />
+                <span className="hidden md:inline">AI History</span>
+              </Link>
+              <button
+                onClick={() => setShowNotes(!showNotes)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  showNotes 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <StickyNote className="h-5 w-5" />
+                <span className="hidden md:inline">Notes</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -379,22 +385,86 @@ ${response.english}`
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  className={`max-w-2xl px-6 py-4 rounded-2xl shadow-lg ${
                     message.type === 'user'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+                      : 'bg-white border-2 border-gray-200 text-gray-800'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.type === 'ai' ? (
+                    message.bilingual && message.bilingual.motherTongue ? (
+                      // Show bilingual message
+                      <BilingualMessage
+                        englishText={message.bilingual.english}
+                        translatedText={message.bilingual.motherTongue}
+                        language={message.bilingual.language}
+                        nativeName={message.bilingual.nativeName}
+                      />
+                    ) : (
+                      // Show English only
+                      <div className="prose prose-sm max-w-none">
+                      {/* Format AI responses with proper styling */}
+                      {message.content.split('\n').map((line, index) => {
+                        // Bold headers
+                        if (line.startsWith('**') && line.endsWith('**')) {
+                          return (
+                            <h3 key={index} className="text-lg font-bold text-indigo-700 mt-4 mb-2">
+                              {line.replace(/\*\*/g, '')}
+                            </h3>
+                          )
+                        }
+                        // Step numbers
+                        if (line.match(/^(Step \d+:|Final Answer:|Key Concept:|Common Mistake:)/)) {
+                          return (
+                            <p key={index} className="font-bold text-gray-900 mt-3 mb-1">
+                              {line}
+                            </p>
+                          )
+                        }
+                        // Bullet points
+                        if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
+                          return (
+                            <li key={index} className="ml-4 text-gray-700">
+                              {line.replace(/^[•-]\s*/, '')}
+                            </li>
+                          )
+                        }
+                        // Horizontal line
+                        if (line.trim() === '---') {
+                          return <hr key={index} className="my-4 border-gray-300" />
+                        }
+                        // Formulas or code (anything with backticks or special chars)
+                        if (line.includes('=') || line.includes('÷') || line.includes('×')) {
+                          return (
+                            <p key={index} className="font-mono bg-gray-100 px-3 py-2 rounded my-2 text-gray-800">
+                              {line}
+                            </p>
+                          )
+                        }
+                        // Regular text
+                        if (line.trim()) {
+                          return (
+                            <p key={index} className="text-gray-700 leading-relaxed my-2">
+                              {line}
+                            </p>
+                          )
+                        }
+                        return <br key={index} />
+                      })}
+                    </div>
+                    )
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
               </div>
             ))}
             
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg flex items-center space-x-2">
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span>AI is thinking...</span>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-200 text-gray-800 px-6 py-4 rounded-2xl flex items-center space-x-3 shadow-lg">
+                  <Loader className="h-5 w-5 animate-spin text-indigo-600" />
+                  <span className="font-semibold">AI is thinking...</span>
                 </div>
               </div>
             )}
@@ -452,7 +522,11 @@ ${response.english}`
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything about your studies..."
-                  className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:border-indigo-500"
+                  className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:border-indigo-500 bg-white text-black"
+                  style={{ 
+                    color: '#000000', 
+                    backgroundColor: '#ffffff'
+                  }}
                   rows="2"
                 />
                 <button

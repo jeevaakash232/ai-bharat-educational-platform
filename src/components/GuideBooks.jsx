@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, BookOpen, Download, Eye, Search, Filter, Book, StickyNote } from 'lucide-react'
-import { getAllBooks, searchBooks, getBooksBySubject, getFilteredBooks } from '../data/booksData'
+import { ArrowLeft, BookOpen, Download, Eye, Search, Filter, Book, StickyNote, Clock } from 'lucide-react'
+// Books are loaded from server API and localStorage only
 import { API_BASE_URL } from '../config'
 import NotesPanel from './NotesPanel'
 
@@ -14,6 +14,9 @@ const GuideBooks = () => {
   const [selectedSubject, setSelectedSubject] = useState('all')
   const [books, setBooks] = useState([])
   const [showNotes, setShowNotes] = useState(false)
+
+  // Version check - if you see this in console, the new code is loaded
+  console.log('🔄 GuideBooks v2.0 - Tamil books support enabled')
 
   useEffect(() => {
     if (!user) {
@@ -28,6 +31,11 @@ const GuideBooks = () => {
           const response = await fetch(`${API_BASE_URL}/api/books`)
           if (response.ok) {
             const serverBooks = await response.json()
+            console.log('📚 Server returned books:', serverBooks.length)
+            console.log('📚 Books by subject:', serverBooks.reduce((acc, book) => {
+              acc[book.subject] = (acc[book.subject] || 0) + 1
+              return acc
+            }, {}))
             console.log('Loaded books from server:', serverBooks.length)
             return serverBooks
           }
@@ -37,38 +45,11 @@ const GuideBooks = () => {
         return []
       }
 
-      // Load books based on user's preferences (state, medium, class, subjects)
-      let availableBooks = []
-      
-      if (user.selectedState && user.selectedMedium) {
-        // Use enhanced filtering with state and medium preferences
-        availableBooks = getFilteredBooks({
-          selectedState: user.selectedState,
-          selectedMedium: user.selectedMedium,
-          stateLanguage: user.stateLanguage,
-          class: user.class,
-          board: user.board
-        })
-        
-        // Further filter by user's subjects if available
-        if (user.subjects && user.subjects.length > 0) {
-          availableBooks = availableBooks.filter(book => 
-            user.subjects.includes(book.subject)
-          )
-        }
-      } else if (user.subjects && user.subjects.length > 0) {
-        // Fallback to subject-based filtering if state/medium not selected
-        user.subjects.forEach(subject => {
-          const subjectBooks = getBooksBySubject(subject, user.class)
-          availableBooks.push(...subjectBooks)
-        })
-      } else {
-        // Get all books if no specific preferences
-        availableBooks = getAllBooks()
-      }
-
       // Load uploaded books from server
       const serverBooks = await loadBooksFromServer()
+      
+      // Start with empty array - we'll load from server and localStorage only
+      let availableBooks = []
       
       // Filter server books based on user preferences
       const filteredServerBooks = serverBooks.filter(book => {
@@ -96,6 +77,7 @@ const GuideBooks = () => {
           } else if (userMedium === 'english' && (bookMedium === 'english' || bookMedium.includes('english'))) {
             matchesMedium = true
           } else if (bookMedium === 'both') {
+            // Books with medium "both" should appear for ALL medium selections
             matchesMedium = true
           } else if (!user.selectedMedium) {
             matchesMedium = true
@@ -104,17 +86,23 @@ const GuideBooks = () => {
           }
         }
         
-        // Only filter by subjects if user has subjects selected
-        // Otherwise show all books for their state/medium/class
-        const matchesSubjects = !user.subjects || user.subjects.length === 0 || 
-          user.subjects.includes(book.subject)
+        // IMPORTANT: Mother tongue books (Tamil) should ALWAYS be shown regardless of subject selection
+        // Check if this is a mother tongue book
+        const isMotherTongue = book.isMotherTongue === true || book.subject === 'Tamil'
+        
+        // Show ALL books for the user's class, state, and medium
+        // Don't filter by subjects - let users see all available books
+        const matchesSubjects = true  // Always true - show all books
         
         console.log('Book filter debug:', {
           bookTitle: book.title,
           bookState: book.state,
           bookClass: book.class,
           bookSubject: book.subject,
+          bookMedium: book.medium,
+          isMotherTongue: isMotherTongue,
           userState: user.selectedState,
+          userMedium: user.selectedMedium,
           userClass: user.class,
           userSubjects: user.subjects,
           matchesState,
@@ -178,7 +166,7 @@ const GuideBooks = () => {
             else if (userMedium === 'english' && (bookMedium === 'english' || bookMedium.includes('english'))) {
               matchesMedium = true
             }
-            // Check for 'both' medium books
+            // Check for 'both' medium books - should appear for ALL medium selections
             else if (bookMedium === 'both') {
               matchesMedium = true
             }
@@ -191,14 +179,19 @@ const GuideBooks = () => {
             }
           }
           
-          const matchesSubjects = !user.subjects || user.subjects.length === 0 || 
-            user.subjects.includes(book.subject)
+          // IMPORTANT: Mother tongue books should ALWAYS be shown
+          const isMotherTongue = book.isMotherTongue === true || book.subject === 'Tamil'
+          
+          // Show ALL books for the user's class, state, and medium
+          // Don't filter by subjects - let users see all available books
+          const matchesSubjects = true  // Always true - show all books
           
           console.log('Book filtering:', {
             bookTitle: book.title,
             bookState: book.state,
             bookMedium: book.medium,
             bookClass: book.class,
+            isMotherTongue: isMotherTongue,
             userState: user.selectedState,
             userMedium: user.selectedMedium,
             userClass: user.class,
@@ -214,13 +207,27 @@ const GuideBooks = () => {
         
         console.log('Filtered uploaded books:', filteredUploadedBooks.length)
         
-        // Combine database books with uploaded books and server books
-        availableBooks = [...availableBooks, ...filteredUploadedBooks, ...filteredServerBooks]
+        // Combine uploaded books and server books
+        availableBooks = [...filteredUploadedBooks, ...filteredServerBooks]
       } catch (error) {
         console.error('Error loading uploaded books:', error)
         // Still include server books even if localStorage fails
-        availableBooks = [...availableBooks, ...filteredServerBooks]
+        availableBooks = [...filteredServerBooks]
       }
+      
+      console.log('✅ Final books to display:', availableBooks.length)
+      console.log('✅ Books by subject:', availableBooks.reduce((acc, book) => {
+        acc[book.subject] = (acc[book.subject] || 0) + 1
+        return acc
+      }, {}))
+      console.log('✅ All book titles:', availableBooks.map(b => `${b.title} (${b.subject})`))
+      
+      // Sort books by order field (curriculum order)
+      availableBooks.sort((a, b) => {
+        const orderA = a.order || 999
+        const orderB = b.order || 999
+        return orderA - orderB
+      })
       
       setBooks(availableBooks)
     }
@@ -235,9 +242,12 @@ const GuideBooks = () => {
     { id: 'practice', name: 'Practice Books' }
   ]
 
-  const subjects = user?.subjects ? 
-    [{ id: 'all', name: 'All Subjects' }, ...user.subjects.map(s => ({ id: s, name: s }))] :
-    [{ id: 'all', name: 'All Subjects' }]
+  // Get unique subjects from available books
+  const uniqueSubjects = [...new Set(books.map(book => book.subject))].sort()
+  const subjects = [
+    { id: 'all', name: 'All Subjects' },
+    ...uniqueSubjects.map(s => ({ id: s, name: s }))
+  ]
 
   // Filter books based on search and filters
   const filteredBooks = books.filter(book => {
@@ -253,18 +263,98 @@ const GuideBooks = () => {
     return matchesSearch && matchesCategory && matchesSubject
   })
 
-  const handleDownload = (book) => {
-    // In a real app, this would trigger actual download
-    const link = document.createElement('a')
-    link.href = book.downloadUrl
-    link.download = `${book.title}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownload = async (book) => {
+    try {
+      console.log('📥 Downloading book:', book.title)
+      console.log('📥 Book key:', book.key)
+      
+      // Get presigned URL from backend
+      const apiUrl = `${API_BASE_URL}/api/books/${encodeURIComponent(book.key)}`
+      console.log('📥 Fetching from:', apiUrl)
+      
+      const response = await fetch(apiUrl)
+      console.log('📥 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('📥 Error response:', errorText)
+        throw new Error('Failed to get download URL: ' + response.status)
+      }
+      
+      const data = await response.json()
+      const presignedUrl = data.url
+      console.log('📥 Got presigned URL')
+      
+      // Try blob approach first (better UX but requires CORS)
+      try {
+        console.log('📥 Attempting blob download...')
+        const fileResponse = await fetch(presignedUrl)
+        
+        if (!fileResponse.ok) {
+          throw new Error('Blob fetch failed: ' + fileResponse.status)
+        }
+        
+        const blob = await fileResponse.blob()
+        console.log('📥 Got blob, size:', blob.size)
+        
+        // Create blob URL and download
+        const blobUrl = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = `${book.title}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up blob URL
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+        
+        console.log('✅ Blob download completed')
+      } catch (blobError) {
+        // Fallback: Open in new tab (works without CORS)
+        console.log('⚠️ Blob download failed, using fallback method')
+        console.log('⚠️ Error:', blobError.message)
+        console.log('📥 Opening in new tab...')
+        
+        // Create a temporary link with download attribute
+        const link = document.createElement('a')
+        link.href = presignedUrl
+        link.download = `${book.title}.pdf`
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        console.log('✅ Opened in new tab (browser will download or display)')
+      }
+    } catch (error) {
+      console.error('❌ Download error:', error)
+      alert('Failed to download book: ' + error.message + '\n\nPlease check the console for details.')
+    }
   }
 
-  const handleView = (book) => {
-    navigate(book.viewUrl)
+  const handleView = async (book) => {
+    try {
+      console.log('👁️ Viewing book:', book.title)
+      
+      // Get presigned URL from backend
+      const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(book.key)}`)
+      if (!response.ok) {
+        throw new Error('Failed to get book URL')
+      }
+      
+      const data = await response.json()
+      const viewUrl = data.url
+      
+      // Open in new tab
+      window.open(viewUrl, '_blank')
+      
+      console.log('✅ Book opened in new tab')
+    } catch (error) {
+      console.error('❌ View error:', error)
+      alert('Failed to open book: ' + error.message)
+    }
   }
 
   // Component to render individual book card
@@ -387,18 +477,28 @@ const GuideBooks = () => {
               </div>
             </div>
             </div>
-            <button
-              onClick={() => setShowNotes(!showNotes)}
-              className={`flex items-center space-x-2 px-3 md:px-4 py-2 rounded-lg transition-colors ${
-                showNotes 
-                  ? 'bg-green-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="Study Notes"
-            >
-              <StickyNote className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="hidden md:inline">Notes</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <Link
+                to="/book-history"
+                className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors"
+                title="View Book History"
+              >
+                <Clock className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="hidden md:inline">Book History</span>
+              </Link>
+              <button
+                onClick={() => setShowNotes(!showNotes)}
+                className={`flex items-center space-x-2 px-3 md:px-4 py-2 rounded-lg transition-colors ${
+                  showNotes 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                title="Study Notes"
+              >
+                <StickyNote className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="hidden md:inline">Notes</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>

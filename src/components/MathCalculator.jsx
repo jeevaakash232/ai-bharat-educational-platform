@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ArrowLeft, Calculator, Send, Copy, Download, BookOpen } from 'lucide-react'
-import { getGroqMathResponse } from '../services/groqMathService'
+import { getBedrockResponse } from '../services/bedrockService'
 
 const MathCalculator = () => {
   const { user } = useAuth()
@@ -60,7 +60,7 @@ const MathCalculator = () => {
     setIsLoading(true)
     
     try {
-      const response = await getGroqMathResponse(problem, user)
+      const response = await getBedrockResponse(problem, user)
       setSolution(response)
       
       // Add to history
@@ -116,7 +116,7 @@ const MathCalculator = () => {
               <Calculator className="h-8 w-8 text-blue-600" />
               <div>
                 <h1 className="text-xl font-bold text-gray-800">Advanced Math Calculator</h1>
-                <p className="text-sm text-gray-600">Powered by Groq AI - Solve complex mathematical problems</p>
+                <p className="text-sm text-gray-600">Powered by AWS Bedrock AI - Solve complex mathematical problems</p>
               </div>
             </div>
           </div>

@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Download, ExternalLink, AlertCircle, StickyNote } from 'lucide-react'
+import { ArrowLeft, Download, ExternalLink, AlertCircle, StickyNote, Clock } from 'lucide-react'
 import { getBookById } from '../data/booksData'
 import { API_BASE_URL } from '../config'
 import NotesPanel from './NotesPanel'
+import { historyService } from '../services/historyService'
+import { useAuth } from '../contexts/AuthContext'
 
 const SimplePDFViewer = () => {
   const { bookId } = useParams()
+  const { user } = useAuth()
   const [book, setBook] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showNotes, setShowNotes] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const startTimeRef = useRef(Date.now())
+  const trackingIntervalRef = useRef(null)
+  const hasTrackedRef = useRef(false) // Prevent duplicate tracking
 
   useEffect(() => {
     const loadBook = async () => {
@@ -62,10 +69,56 @@ const SimplePDFViewer = () => {
       console.log('Final book result:', foundBook)
       setBook(foundBook)
       setLoading(false)
+
+      // Track book view when loaded (only once)
+      if (foundBook && user && !hasTrackedRef.current) {
+        hasTrackedRef.current = true // Mark as tracked
+        try {
+          historyService.setUser(user.email || user.id)
+          await historyService.trackBookView({
+            id: foundBook.id,
+            title: foundBook.title,
+            subject: foundBook.subject,
+            class: foundBook.class,
+            author: foundBook.author
+          })
+          console.log('📚 Book view tracked')
+        } catch (error) {
+          console.error('Error tracking book view:', error)
+        }
+      }
     }
 
     loadBook()
-  }, [bookId])
+  }, [bookId]) // Remove 'user' from dependencies to prevent re-tracking
+
+  // Track reading progress periodically
+  useEffect(() => {
+    if (!book || !user) return
+
+    historyService.setUser(user.email || user.id)
+
+    // Update progress every 30 seconds
+    trackingIntervalRef.current = setInterval(async () => {
+      const duration = Math.floor((Date.now() - startTimeRef.current) / 1000)
+      try {
+        await historyService.updateBookView(`book_${book.id}`, duration, currentPage)
+        console.log('📖 Reading progress updated')
+      } catch (error) {
+        console.error('Error updating progress:', error)
+      }
+    }, 30000)
+
+    // Cleanup on unmount
+    return () => {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current)
+      }
+      // Final progress update
+      const duration = Math.floor((Date.now() - startTimeRef.current) / 1000)
+      historyService.updateBookView(`book_${book.id}`, duration, currentPage).catch(console.error)
+    }
+  }, [book, user, currentPage])
 
   if (loading) {
     return (
@@ -137,6 +190,15 @@ const SimplePDFViewer = () => {
             </div>
             
             <div className="flex items-center space-x-3">
+              <Link
+                to="/book-history"
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors"
+                title="View Book History"
+              >
+                <Clock className="h-4 w-4" />
+                <span className="hidden md:inline">Book History</span>
+              </Link>
+
               <button
                 onClick={() => setShowNotes(!showNotes)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${

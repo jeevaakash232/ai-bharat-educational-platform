@@ -1,10 +1,20 @@
 import React, { useState } from 'react'
 import VisualizationEngine from './VisualizationEngine'
 import { Atom, Zap, Droplets, Leaf, Eye, Microscope } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useBilingualAI } from '../hooks/useBilingualAI'
+import BilingualMessage from './BilingualMessage'
 
 const ScienceVisualizer = ({ subject, topic, className = '' }) => {
+  const { user } = useAuth()
+  const { getBilingual, isTranslating } = useBilingualAI()
+  
   const [selectedDemo, setSelectedDemo] = useState('physics')
   const [animationSpeed, setAnimationSpeed] = useState(1)
+  const [showDoubtSection, setShowDoubtSection] = useState(false)
+  const [userDoubt, setUserDoubt] = useState('')
+  const [doubtAnswer, setDoubtAnswer] = useState(null)
+  const [bilingualAnswer, setBilingualAnswer] = useState(null)
 
   const scienceVisualizations = {
     physics: {
@@ -43,6 +53,37 @@ const ScienceVisualizer = ({ subject, topic, className = '' }) => {
             time: 6
           },
           explanation: "Objects with constant acceleration increase their velocity uniformly over time."
+        },
+        {
+          name: 'Pendulum Motion',
+          type: 'physics-motion',
+          data: {
+            type: 'pendulum',
+            length: 1,
+            angle: 30,
+            time: 10
+          },
+          explanation: "A pendulum swings back and forth due to gravity, demonstrating periodic motion and energy conversion."
+        },
+        {
+          name: 'Electric Circuit',
+          type: 'physics-circuit',
+          data: {
+            voltage: 12,
+            resistance: 4,
+            current: 3
+          },
+          explanation: "Electric current flows through a circuit following Ohm's Law: V = IR"
+        },
+        {
+          name: 'Wave Motion',
+          type: 'physics-wave',
+          data: {
+            amplitude: 2,
+            frequency: 1,
+            wavelength: 4
+          },
+          explanation: "Waves transfer energy through oscillations without transferring matter."
         }
       ]
     },
@@ -105,6 +146,55 @@ const ScienceVisualizer = ({ subject, topic, className = '' }) => {
             ]
           },
           explanation: "CO₂ is linear with carbon double-bonded to two oxygen atoms, making it a greenhouse gas."
+        },
+        {
+          name: 'Ammonia (NH₃)',
+          type: 'chemistry-molecule',
+          data: {
+            molecule: 'NH₃',
+            atoms: [
+              { element: 'N', x: 250, y: 200, radius: 22 },
+              { element: 'H', x: 210, y: 170, radius: 12 },
+              { element: 'H', x: 290, y: 170, radius: 12 },
+              { element: 'H', x: 250, y: 240, radius: 12 }
+            ],
+            bonds: [
+              { from: 0, to: 1, type: 'single' },
+              { from: 0, to: 2, type: 'single' },
+              { from: 0, to: 3, type: 'single' }
+            ]
+          },
+          explanation: "Ammonia has a pyramidal shape with nitrogen bonded to three hydrogen atoms."
+        },
+        {
+          name: 'Oxygen (O₂)',
+          type: 'chemistry-molecule',
+          data: {
+            molecule: 'O₂',
+            atoms: [
+              { element: 'O', x: 220, y: 200, radius: 22 },
+              { element: 'O', x: 280, y: 200, radius: 22 }
+            ],
+            bonds: [
+              { from: 0, to: 1, type: 'double' }
+            ]
+          },
+          explanation: "Oxygen gas consists of two oxygen atoms double-bonded together, essential for respiration."
+        },
+        {
+          name: 'Sodium Chloride (NaCl)',
+          type: 'chemistry-molecule',
+          data: {
+            molecule: 'NaCl',
+            atoms: [
+              { element: 'Na', x: 220, y: 200, radius: 24 },
+              { element: 'Cl', x: 280, y: 200, radius: 26 }
+            ],
+            bonds: [
+              { from: 0, to: 1, type: 'ionic' }
+            ]
+          },
+          explanation: "Table salt forms through ionic bonding between sodium and chlorine atoms."
         }
       ]
     },
@@ -363,7 +453,7 @@ const ScienceVisualizer = ({ subject, topic, className = '' }) => {
             { title: 'Wave Motion', description: 'Understanding sound and light waves' },
             { title: 'Electromagnetic Forces', description: 'Electric and magnetic interactions' }
           ].map((topic, index) => (
-            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer">
               <div className="font-medium text-gray-800">{topic.title}</div>
               <div className="text-sm text-gray-600 mt-1">{topic.description}</div>
             </div>
@@ -374,7 +464,7 @@ const ScienceVisualizer = ({ subject, topic, className = '' }) => {
             { title: 'Periodic Table', description: 'Organization of elements by properties' },
             { title: 'Acids and Bases', description: 'pH and chemical equilibrium' }
           ].map((topic, index) => (
-            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer">
               <div className="font-medium text-gray-800">{topic.title}</div>
               <div className="text-sm text-gray-600 mt-1">{topic.description}</div>
             </div>
@@ -385,15 +475,206 @@ const ScienceVisualizer = ({ subject, topic, className = '' }) => {
             { title: 'DNA Structure', description: 'The blueprint of life' },
             { title: 'Evolution', description: 'How species change over time' }
           ].map((topic, index) => (
-            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div key={index} className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer">
               <div className="font-medium text-gray-800">{topic.title}</div>
               <div className="text-sm text-gray-600 mt-1">{topic.description}</div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Doubt Clearing Section */}
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg shadow-sm border border-purple-200 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base md:text-lg font-semibold text-gray-800 flex items-center">
+            <Microscope className="h-6 w-6 mr-2 text-purple-600" />
+            💡 Clear Your Doubts
+          </h3>
+          <button
+            onClick={() => setShowDoubtSection(!showDoubtSection)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+          >
+            {showDoubtSection ? 'Hide' : 'Ask Question'}
+          </button>
+        </div>
+
+        {showDoubtSection && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                What's your question about {scienceVisualizations[selectedDemo]?.title}?
+              </label>
+              <textarea
+                value={userDoubt}
+                onChange={(e) => setUserDoubt(e.target.value)}
+                placeholder="e.g., Why does a ball thrown upward come back down?"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                rows="3"
+              />
+            </div>
+
+            <button
+              onClick={async () => {
+                if (userDoubt.trim()) {
+                  // Generate answer in English
+                  const answer = generateDoubtAnswer(userDoubt, selectedDemo)
+                  setDoubtAnswer(answer)
+                  
+                  // Get bilingual version
+                  const bilingual = await getBilingual(answer)
+                  setBilingualAnswer(bilingual)
+                }
+              }}
+              disabled={!userDoubt.trim() || isTranslating}
+              className="w-full md:w-auto px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isTranslating ? 'Translating...' : 'Get Answer'}
+            </button>
+
+            {bilingualAnswer && (
+              <div className="bg-white rounded-lg p-4 border-l-4 border-purple-500">
+                <h4 className="font-semibold text-purple-800 mb-2">Answer:</h4>
+                <BilingualMessage
+                  englishText={bilingualAnswer.english}
+                  translatedText={bilingualAnswer.motherTongue}
+                  language={bilingualAnswer.language}
+                  nativeName={bilingualAnswer.nativeName}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Common Questions */}
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-800 mb-3">🔥 Frequently Asked Questions:</h4>
+          <div className="space-y-3">
+            {selectedDemo === 'physics' && [
+              {
+                q: "Why do objects fall at the same rate regardless of mass?",
+                a: "Galileo discovered that in the absence of air resistance, all objects fall at the same rate because gravity accelerates all masses equally (9.8 m/s²). The force is proportional to mass (F=mg), but acceleration (a=F/m) cancels out the mass, leaving only g."
+              },
+              {
+                q: "What is the difference between speed and velocity?",
+                a: "Speed is how fast something moves (scalar), while velocity includes both speed and direction (vector). A car going 60 km/h north has a different velocity than one going 60 km/h south, but the same speed."
+              },
+              {
+                q: "How does a pendulum demonstrate energy conservation?",
+                a: "A pendulum converts potential energy (at highest points) to kinetic energy (at lowest point) and back. The total energy remains constant, demonstrating the law of conservation of energy."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                <summary className="font-medium text-gray-800 cursor-pointer hover:text-purple-600">
+                  {faq.q}
+                </summary>
+                <p className="text-gray-600 mt-2 text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+
+            {selectedDemo === 'chemistry' && [
+              {
+                q: "Why do atoms form bonds?",
+                a: "Atoms form bonds to achieve a stable electron configuration, usually by filling their outer electron shell. This makes them more stable and lower in energy. Atoms can share electrons (covalent bonds) or transfer electrons (ionic bonds)."
+              },
+              {
+                q: "What determines if a bond is ionic or covalent?",
+                a: "The difference in electronegativity between atoms determines bond type. Large differences (>1.7) create ionic bonds where electrons transfer. Small differences create covalent bonds where electrons are shared."
+              },
+              {
+                q: "Why is water a polar molecule?",
+                a: "Water is polar because oxygen is more electronegative than hydrogen, pulling shared electrons closer. This creates a partial negative charge on oxygen and partial positive charges on hydrogens, making water an excellent solvent."
+              },
+              {
+                q: "What is the pH scale?",
+                a: "pH measures acidity/basicity on a scale of 0-14. pH 7 is neutral (pure water), below 7 is acidic (more H⁺ ions), above 7 is basic (more OH⁻ ions). Each unit represents a 10x change in concentration."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                <summary className="font-medium text-gray-800 cursor-pointer hover:text-purple-600">
+                  {faq.q}
+                </summary>
+                <p className="text-gray-600 mt-2 text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+
+            {selectedDemo === 'biology' && [
+              {
+                q: "What's the difference between plant and animal cells?",
+                a: "Plant cells have cell walls, chloroplasts for photosynthesis, and large central vacuoles. Animal cells have centrioles and are generally smaller. Both have nuclei, mitochondria, and cell membranes."
+              },
+              {
+                q: "How does photosynthesis work?",
+                a: "Plants use chlorophyll to capture light energy, converting CO₂ and water into glucose and oxygen. The equation is: 6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂. This process occurs in chloroplasts."
+              },
+              {
+                q: "What is DNA and why is it important?",
+                a: "DNA (deoxyribonucleic acid) is the molecule that stores genetic information. It's a double helix made of nucleotides that code for proteins. DNA is passed from parents to offspring, determining inherited traits."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                <summary className="font-medium text-gray-800 cursor-pointer hover:text-purple-600">
+                  {faq.q}
+                </summary>
+                <p className="text-gray-600 mt-2 text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
+}
+
+// Helper function to generate doubt answers
+const generateDoubtAnswer = (question, subject) => {
+  const lowerQuestion = question.toLowerCase()
+  
+  // Physics answers
+  if (subject === 'physics') {
+    if (lowerQuestion.includes('gravity') || lowerQuestion.includes('fall')) {
+      return "Gravity is a fundamental force that attracts all objects with mass toward each other. On Earth, gravity accelerates objects at 9.8 m/s² downward. This is why objects fall - Earth's gravity pulls them down. The acceleration is the same for all objects regardless of their mass (in vacuum)."
+    }
+    if (lowerQuestion.includes('force') || lowerQuestion.includes('newton')) {
+      return "Newton's Laws explain how forces affect motion: 1) Objects stay at rest or in motion unless acted upon by a force. 2) Force equals mass times acceleration (F=ma). 3) Every action has an equal and opposite reaction. Forces cause objects to accelerate, change direction, or deform."
+    }
+    if (lowerQuestion.includes('energy')) {
+      return "Energy is the capacity to do work. It comes in many forms: kinetic (motion), potential (position), thermal (heat), chemical, electrical, etc. Energy cannot be created or destroyed, only converted from one form to another (Law of Conservation of Energy)."
+    }
+    return "Great question! In physics, we study how objects move and interact through forces and energy. The key is understanding that everything follows predictable laws. Try breaking down your question into smaller parts: What moves? What forces act on it? What energy changes occur?"
+  }
+  
+  // Chemistry answers
+  if (subject === 'chemistry') {
+    if (lowerQuestion.includes('atom') || lowerQuestion.includes('molecule')) {
+      return "Atoms are the smallest units of elements, made of protons, neutrons, and electrons. Molecules form when atoms bond together. The type of bond (ionic, covalent, metallic) depends on how electrons are shared or transferred between atoms. This determines the molecule's properties."
+    }
+    if (lowerQuestion.includes('bond') || lowerQuestion.includes('bonding')) {
+      return "Chemical bonds form when atoms share or transfer electrons to achieve stable electron configurations. Covalent bonds involve sharing electrons (like in H₂O). Ionic bonds involve transferring electrons (like in NaCl). The bond type affects the substance's properties like melting point and conductivity."
+    }
+    if (lowerQuestion.includes('reaction')) {
+      return "Chemical reactions occur when bonds break and new bonds form, rearranging atoms into new substances. Reactions follow the law of conservation of mass - atoms aren't created or destroyed, just rearranged. Energy is either released (exothermic) or absorbed (endothermic) during reactions."
+    }
+    if (lowerQuestion.includes('ph') || lowerQuestion.includes('acid') || lowerQuestion.includes('base')) {
+      return "pH measures the concentration of H⁺ ions in a solution. Acids release H⁺ ions (pH < 7), bases release OH⁻ ions (pH > 7), and neutral solutions have pH = 7. The pH scale is logarithmic, so each unit represents a 10-fold change in acidity."
+    }
+    return "Excellent chemistry question! Chemistry is all about how atoms interact and form new substances. Think about: What atoms are involved? How are they bonded? What happens to electrons? Understanding electron behavior is key to understanding chemistry!"
+  }
+  
+  // Biology answers
+  if (subject === 'biology') {
+    if (lowerQuestion.includes('cell')) {
+      return "Cells are the basic units of life. They contain organelles that perform specific functions: nucleus (genetic control), mitochondria (energy production), ribosomes (protein synthesis), etc. Plant cells have additional structures like cell walls and chloroplasts. All living things are made of cells."
+    }
+    if (lowerQuestion.includes('dna') || lowerQuestion.includes('gene')) {
+      return "DNA is the molecule that stores genetic information in a double helix structure. Genes are segments of DNA that code for specific proteins. DNA is made of four nucleotides (A, T, G, C) whose sequence determines genetic traits. DNA replicates to pass information to new cells."
+    }
+    if (lowerQuestion.includes('photosynthesis')) {
+      return "Photosynthesis is how plants convert light energy into chemical energy (glucose). Chlorophyll in chloroplasts captures light, which powers the conversion of CO₂ and water into glucose and oxygen. This process is essential for life on Earth as it produces oxygen and food."
+    }
+    return "Great biology question! Biology studies living organisms and life processes. Consider: What living thing or process are you asking about? What is its function? How does it help the organism survive? Biology is all about understanding how life works!"
+  }
+  
+  return "That's an interesting question! To give you the best answer, try to be more specific about what aspect you're curious about. What exactly would you like to understand better?"
 }
 
 export default ScienceVisualizer

@@ -179,7 +179,17 @@ const ManageBooks = () => {
                         {/* Action Buttons */}
                         <div className="flex space-x-2 ml-4">
                           <button
-                            onClick={() => window.open(book.viewUrl, '_blank')}
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(book.key)}`)
+                                if (!response.ok) throw new Error('Failed to get book URL')
+                                const data = await response.json()
+                                window.open(data.url, '_blank')
+                              } catch (error) {
+                                console.error('View error:', error)
+                                alert('Failed to open book: ' + error.message)
+                              }
+                            }}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="View Book"
                           >
@@ -187,13 +197,49 @@ const ManageBooks = () => {
                           </button>
                           
                           <button
-                            onClick={() => {
-                              const link = document.createElement('a')
-                              link.href = book.downloadUrl
-                              link.download = book.originalFileName
-                              document.body.appendChild(link)
-                              link.click()
-                              document.body.removeChild(link)
+                            onClick={async () => {
+                              try {
+                                console.log('📥 Downloading book:', book.title)
+                                const apiUrl = `${API_BASE_URL}/api/books/${encodeURIComponent(book.key)}`
+                                
+                                const response = await fetch(apiUrl)
+                                if (!response.ok) throw new Error('Failed to get download URL: ' + response.status)
+                                
+                                const data = await response.json()
+                                const presignedUrl = data.url
+                                
+                                // Try blob approach first
+                                try {
+                                  const fileResponse = await fetch(presignedUrl)
+                                  if (!fileResponse.ok) throw new Error('Blob fetch failed')
+                                  
+                                  const blob = await fileResponse.blob()
+                                  const blobUrl = window.URL.createObjectURL(blob)
+                                  const link = document.createElement('a')
+                                  link.href = blobUrl
+                                  link.download = book.originalFileName
+                                  document.body.appendChild(link)
+                                  link.click()
+                                  document.body.removeChild(link)
+                                  setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+                                  console.log('✅ Blob download completed')
+                                } catch (blobError) {
+                                  // Fallback: Open in new tab
+                                  console.log('⚠️ Using fallback download method')
+                                  const link = document.createElement('a')
+                                  link.href = presignedUrl
+                                  link.download = book.originalFileName
+                                  link.target = '_blank'
+                                  link.rel = 'noopener noreferrer'
+                                  document.body.appendChild(link)
+                                  link.click()
+                                  document.body.removeChild(link)
+                                  console.log('✅ Opened in new tab')
+                                }
+                              } catch (error) {
+                                console.error('Download error:', error)
+                                alert('Failed to download book: ' + error.message)
+                              }
                             }}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                             title="Download Book"

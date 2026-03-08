@@ -162,8 +162,80 @@ export const syncUserData = () => {
   
   const latestUserData = findUserByEmail(currentUser.email)
   if (latestUserData) {
+    // Derive stateLanguage from selectedState if not set (for backward compatibility)
+    if (!latestUserData.stateLanguage && latestUserData.selectedState) {
+      const stateLanguageMap = {
+        'Tamil Nadu': 'Tamil',
+        'Kerala': 'Malayalam',
+        'Karnataka': 'Kannada',
+        'Andhra Pradesh': 'Telugu',
+        'Telangana': 'Telugu',
+        'Maharashtra': 'Marathi',
+        'West Bengal': 'Bengali',
+        'Gujarat': 'Gujarati',
+        'Punjab': 'Punjabi',
+        'Odisha': 'Odia',
+        'Assam': 'Assamese',
+        'Bihar': 'Hindi',
+        'Uttar Pradesh': 'Hindi',
+        'Madhya Pradesh': 'Hindi',
+        'Rajasthan': 'Hindi',
+        'Haryana': 'Hindi',
+        'Himachal Pradesh': 'Hindi',
+        'Chhattisgarh': 'Hindi',
+        'Jharkhand': 'Hindi',
+        'Uttarakhand': 'Hindi',
+        'Goa': 'Konkani',
+        'Manipur': 'Manipuri',
+        'Meghalaya': 'English',
+        'Mizoram': 'Mizo',
+        'Nagaland': 'English',
+        'Tripura': 'Bengali',
+        'Sikkim': 'Nepali'
+      }
+      latestUserData.stateLanguage = stateLanguageMap[latestUserData.selectedState] || 'Tamil'
+      // Update in database
+      updateUserInDatabase(latestUserData.email, { stateLanguage: latestUserData.stateLanguage })
+    }
+    
     saveCurrentUser(latestUserData)
     return latestUserData
+  }
+  
+  // Also check current user for stateLanguage
+  if (!currentUser.stateLanguage && currentUser.selectedState) {
+    const stateLanguageMap = {
+      'Tamil Nadu': 'Tamil',
+      'Kerala': 'Malayalam',
+      'Karnataka': 'Kannada',
+      'Andhra Pradesh': 'Telugu',
+      'Telangana': 'Telugu',
+      'Maharashtra': 'Marathi',
+      'West Bengal': 'Bengali',
+      'Gujarat': 'Gujarati',
+      'Punjab': 'Punjabi',
+      'Odisha': 'Odia',
+      'Assam': 'Assamese',
+      'Bihar': 'Hindi',
+      'Uttar Pradesh': 'Hindi',
+      'Madhya Pradesh': 'Hindi',
+      'Rajasthan': 'Hindi',
+      'Haryana': 'Hindi',
+      'Himachal Pradesh': 'Hindi',
+      'Chhattisgarh': 'Hindi',
+      'Jharkhand': 'Hindi',
+      'Uttarakhand': 'Hindi',
+      'Goa': 'Konkani',
+      'Manipur': 'Manipuri',
+      'Meghalaya': 'English',
+      'Mizoram': 'Mizo',
+      'Nagaland': 'English',
+      'Tripura': 'Bengali',
+      'Sikkim': 'Nepali'
+    }
+    currentUser.stateLanguage = stateLanguageMap[currentUser.selectedState] || 'Tamil'
+    saveCurrentUser(currentUser)
+    updateUserInDatabase(currentUser.email, { stateLanguage: currentUser.stateLanguage })
   }
   
   return currentUser

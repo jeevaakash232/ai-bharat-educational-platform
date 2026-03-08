@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, User, MapPin, BookOpen, GraduationCap, Save, Edit } from 'lucide-react'
+import { getSubjectsForClass, getHigherSecondaryStreams, requiresStreamSelection } from '../data/curriculumStructure'
+import { ArrowLeft, User, MapPin, BookOpen, GraduationCap, Save, Edit, Cloud } from 'lucide-react'
+
+// Version: 2026-02-27 21:31 - Fixed stateLanguage derivation from state instead of medium
 
 const Settings = () => {
   const { user, updateProfile } = useAuth()
@@ -16,6 +19,7 @@ const Settings = () => {
     stateLanguage: '',
     class: '',
     board: '',
+    stream: '',
     subjects: []
   })
   
@@ -28,6 +32,42 @@ const Settings = () => {
       return
     }
     
+    // Derive stateLanguage from state, not from mediumName
+    let stateLanguage = user.stateLanguage || ''
+    
+    if (!stateLanguage && user.selectedState) {
+      const stateLanguageMap = {
+        'Tamil Nadu': 'Tamil',
+        'Kerala': 'Malayalam',
+        'Karnataka': 'Kannada',
+        'Andhra Pradesh': 'Telugu',
+        'Telangana': 'Telugu',
+        'Maharashtra': 'Marathi',
+        'West Bengal': 'Bengali',
+        'Gujarat': 'Gujarati',
+        'Punjab': 'Punjabi',
+        'Odisha': 'Odia',
+        'Assam': 'Assamese',
+        'Bihar': 'Hindi',
+        'Uttar Pradesh': 'Hindi',
+        'Madhya Pradesh': 'Hindi',
+        'Rajasthan': 'Hindi',
+        'Haryana': 'Hindi',
+        'Himachal Pradesh': 'Hindi',
+        'Chhattisgarh': 'Hindi',
+        'Jharkhand': 'Hindi',
+        'Uttarakhand': 'Hindi',
+        'Goa': 'Konkani',
+        'Manipur': 'Manipuri',
+        'Meghalaya': 'English',
+        'Mizoram': 'Mizo',
+        'Nagaland': 'English',
+        'Tripura': 'Bengali',
+        'Sikkim': 'Nepali'
+      }
+      stateLanguage = stateLanguageMap[user.selectedState] || 'Tamil'
+    }
+    
     // Load current user data
     setFormData({
       name: user.name || '',
@@ -35,12 +75,63 @@ const Settings = () => {
       selectedState: user.selectedState || '',
       selectedMedium: user.selectedMedium || '',
       mediumName: user.mediumName || '',
-      stateLanguage: user.stateLanguage || '',
+      stateLanguage: stateLanguage,
       class: user.class || '',
       board: user.board || 'State Board',
+      stream: user.stream || '',
       subjects: user.subjects || []
     })
   }, [user, navigate])
+
+  // Update subjects when class or stream changes
+  useEffect(() => {
+    if (formData.class && formData.selectedState) {
+      const classNum = parseInt(formData.class)
+      
+      // ALWAYS derive stateLanguage from selectedState
+      const stateLanguageMap = {
+        'Tamil Nadu': 'Tamil',
+        'Kerala': 'Malayalam',
+        'Karnataka': 'Kannada',
+        'Andhra Pradesh': 'Telugu',
+        'Telangana': 'Telugu',
+        'Maharashtra': 'Marathi',
+        'West Bengal': 'Bengali',
+        'Gujarat': 'Gujarati',
+        'Punjab': 'Punjabi',
+        'Odisha': 'Odia',
+        'Assam': 'Assamese',
+        'Bihar': 'Hindi',
+        'Uttar Pradesh': 'Hindi',
+        'Madhya Pradesh': 'Hindi',
+        'Rajasthan': 'Hindi',
+        'Haryana': 'Hindi',
+        'Himachal Pradesh': 'Hindi',
+        'Chhattisgarh': 'Hindi',
+        'Jharkhand': 'Hindi',
+        'Uttarakhand': 'Hindi',
+        'Goa': 'Konkani',
+        'Manipur': 'Manipuri',
+        'Meghalaya': 'English',
+        'Mizoram': 'Mizo',
+        'Nagaland': 'English',
+        'Tripura': 'Bengali',
+        'Sikkim': 'Nepali'
+      }
+      const stateLanguage = stateLanguageMap[formData.selectedState] || 'Tamil'
+      
+      console.log('Settings: Getting subjects for class', classNum, 'stream', formData.stream, 'language', stateLanguage)
+      const subjects = getSubjectsForClass(classNum, formData.stream, stateLanguage)
+        .map(s => s.name)
+      console.log('Settings: Subjects:', subjects)
+      
+      setFormData(prev => ({
+        ...prev,
+        stateLanguage: stateLanguage, // Always update stateLanguage
+        subjects
+      }))
+    }
+  }, [formData.class, formData.stream, formData.selectedState])
 
   // State-Medium mapping
   const stateMediumMapping = {
@@ -76,24 +167,6 @@ const Settings = () => {
   const indianStates = Object.keys(stateMediumMapping).sort()
   const availableMediums = formData.selectedState ? stateMediumMapping[formData.selectedState] || [] : []
 
-  const allSubjects = [
-    'Mathematics',
-    'Science',
-    'Social Studies',
-    'English',
-    'Hindi',
-    'Tamil',
-    'Telugu',
-    'Kannada',
-    'Malayalam',
-    'Marathi',
-    'Bengali',
-    'Gujarati',
-    'Punjabi',
-    'Computer Science',
-    'Environmental Science'
-  ]
-
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -109,11 +182,55 @@ const Settings = () => {
         mediumName: ''
       }))
     }
+    
+    // Reset stream if class changes and new class doesn't require stream
+    if (name === 'class' && !requiresStreamSelection(parseInt(value))) {
+      setFormData(prev => ({
+        ...prev,
+        stream: ''
+      }))
+    }
   }
 
   const handleMediumChange = (medium) => {
-    const stateLanguage = medium.replace(' Medium', '')
     const mediumType = medium === 'English Medium' ? 'english' : 'state'
+    
+    // Determine state language based on selected state, not medium
+    // The regional language is always the state's language, regardless of medium
+    let stateLanguage = 'Tamil' // Default
+    
+    if (formData.selectedState) {
+      const stateLanguageMap = {
+        'Tamil Nadu': 'Tamil',
+        'Kerala': 'Malayalam',
+        'Karnataka': 'Kannada',
+        'Andhra Pradesh': 'Telugu',
+        'Telangana': 'Telugu',
+        'Maharashtra': 'Marathi',
+        'West Bengal': 'Bengali',
+        'Gujarat': 'Gujarati',
+        'Punjab': 'Punjabi',
+        'Odisha': 'Odia',
+        'Assam': 'Assamese',
+        'Bihar': 'Hindi',
+        'Uttar Pradesh': 'Hindi',
+        'Madhya Pradesh': 'Hindi',
+        'Rajasthan': 'Hindi',
+        'Haryana': 'Hindi',
+        'Himachal Pradesh': 'Hindi',
+        'Chhattisgarh': 'Hindi',
+        'Jharkhand': 'Hindi',
+        'Uttarakhand': 'Hindi',
+        'Goa': 'Konkani',
+        'Manipur': 'Manipuri',
+        'Meghalaya': 'English',
+        'Mizoram': 'Mizo',
+        'Nagaland': 'English',
+        'Tripura': 'Bengali',
+        'Sikkim': 'Nepali'
+      }
+      stateLanguage = stateLanguageMap[formData.selectedState] || 'Tamil'
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -123,28 +240,55 @@ const Settings = () => {
     }))
   }
 
-  const handleSubjectToggle = (subject) => {
-    setFormData(prev => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
-    }))
-  }
-
   const handleSave = async () => {
     setLoading(true)
     
     try {
+      // Ensure stateLanguage is set correctly before saving
+      let finalStateLanguage = formData.stateLanguage
+      if (!finalStateLanguage && formData.selectedState) {
+        const stateLanguageMap = {
+          'Tamil Nadu': 'Tamil',
+          'Kerala': 'Malayalam',
+          'Karnataka': 'Kannada',
+          'Andhra Pradesh': 'Telugu',
+          'Telangana': 'Telugu',
+          'Maharashtra': 'Marathi',
+          'West Bengal': 'Bengali',
+          'Gujarat': 'Gujarati',
+          'Punjab': 'Punjabi',
+          'Odisha': 'Odia',
+          'Assam': 'Assamese',
+          'Bihar': 'Hindi',
+          'Uttar Pradesh': 'Hindi',
+          'Madhya Pradesh': 'Hindi',
+          'Rajasthan': 'Hindi',
+          'Haryana': 'Hindi',
+          'Himachal Pradesh': 'Hindi',
+          'Chhattisgarh': 'Hindi',
+          'Jharkhand': 'Hindi',
+          'Uttarakhand': 'Hindi',
+          'Goa': 'Konkani',
+          'Manipur': 'Manipuri',
+          'Meghalaya': 'English',
+          'Mizoram': 'Mizo',
+          'Nagaland': 'English',
+          'Tripura': 'Bengali',
+          'Sikkim': 'Nepali'
+        }
+        finalStateLanguage = stateLanguageMap[formData.selectedState] || 'Tamil'
+      }
+      
       // Update profile
       updateProfile({
         name: formData.name,
         selectedState: formData.selectedState,
         selectedMedium: formData.selectedMedium,
         mediumName: formData.mediumName,
-        stateLanguage: formData.stateLanguage,
+        stateLanguage: finalStateLanguage,
         class: formData.class,
         board: formData.board,
+        stream: formData.stream,
         subjects: formData.subjects,
         profileComplete: true
       })
@@ -340,47 +484,67 @@ const Settings = () => {
                 )}
               </div>
               
+              {/* Stream Selection for Classes 11-12 */}
+              {requiresStreamSelection(parseInt(formData.class)) && (
+                <div className="mb-4 md:mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stream
+                  </label>
+                  {isEditing ? (
+                    <select
+                      name="stream"
+                      value={formData.stream}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="">Select Stream</option>
+                      {getHigherSecondaryStreams().map(stream => (
+                        <option key={stream.id} value={stream.id}>{stream.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-gray-900 py-2">
+                      {formData.stream ? getHigherSecondaryStreams().find(s => s.id === formData.stream)?.name : 'Not set'}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Subjects
                 </label>
                 {isEditing ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {allSubjects.map(subject => (
-                      <label
-                        key={subject}
-                        className={`flex items-center space-x-2 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
-                          formData.subjects.includes(subject)
-                            ? 'border-indigo-500 bg-indigo-50'
-                            : 'border-gray-200 hover:border-indigo-300'
-                        }`}
+                  <>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                      <p className="text-sm text-blue-800">
+                        ℹ️ Subjects are automatically set based on your class{requiresStreamSelection(parseInt(formData.class)) ? ' and stream' : ''}.
+                      </p>
+                    </div>
+                    {/* Debug Info */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 text-xs">
+                      <p><strong>Debug Info:</strong></p>
+                      <p>Medium: {formData.mediumName || 'Not set'}</p>
+                      <p>State Language: {formData.stateLanguage || 'Not set'}</p>
+                      <p>Class: {formData.class}</p>
+                      <p>Stream: {formData.stream || 'None'}</p>
+                    </div>
+                  </>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {formData.subjects.length > 0 ? (
+                    formData.subjects.map((subject, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
                       >
-                        <input
-                          type="checkbox"
-                          checked={formData.subjects.includes(subject)}
-                          onChange={() => handleSubjectToggle(subject)}
-                          className="rounded text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm">{subject}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.subjects.length > 0 ? (
-                      formData.subjects.map(subject => (
-                        <span
-                          key={subject}
-                          className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
-                        >
-                          {subject}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-gray-500">No subjects selected</p>
-                    )}
-                  </div>
-                )}
+                        {subject}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No subjects selected</p>
+                  )}
+                </div>
               </div>
             </div>
           </>
@@ -410,6 +574,7 @@ const Settings = () => {
                   stateLanguage: user.stateLanguage || '',
                   class: user.class || '',
                   board: user.board || 'State Board',
+                  stream: user.stream || '',
                   subjects: user.subjects || []
                 })
               }}
@@ -417,6 +582,30 @@ const Settings = () => {
             >
               Cancel
             </button>
+          </div>
+        )}
+
+        {/* Data Migration Section */}
+        {!isEditing && (
+          <div className="card mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-200">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <Cloud className="h-8 w-8 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Cloud Data Migration</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Transfer all your data from local storage to AWS S3 cloud storage for better security and accessibility across devices.
+                </p>
+                <button
+                  onClick={() => navigate('/data-migration')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <Cloud className="h-5 w-5" />
+                  <span>Migrate to Cloud</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

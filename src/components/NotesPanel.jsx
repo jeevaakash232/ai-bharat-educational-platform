@@ -177,7 +177,7 @@ const NotesPanel = ({
             type="text"
             value={noteTitle}
             onChange={(e) => setNoteTitle(e.target.value)}
-            className="notes-title-input"
+            className="notes-title-input text-black bg-white"
             placeholder="Note title..."
           />
         </div>

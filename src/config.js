@@ -1,32 +1,29 @@
 // API Configuration
-// This will automatically use the correct backend URL
+// This will automatically use the correct backend URL based on environment
 
 const getApiUrl = () => {
-  // Check if running in Capacitor (mobile app)
-  const isCapacitor = window.Capacitor !== undefined
+  // Priority 1: Use environment variable if set (for production deployment)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
   
-  // If accessing via ngrok domain, use same origin for API
+  // Priority 2: If accessing via ngrok domain, use same origin for API
   if (window.location.hostname.includes('ngrok')) {
     return window.location.origin
   }
   
-  if (isCapacitor) {
-    // Mobile app - use ngrok public URL
-    return 'https://nonmonistic-eisegetical-flavia.ngrok-free.dev'
-  }
-  
-  // If running in development on localhost, use localhost
+  // Priority 3: If running in development on localhost, use localhost
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:3001'
   }
   
-  // For other remote access, try to use same host with different port
+  // Priority 4: For production or other remote access, use same host with backend port
   return window.location.origin.replace(':5173', ':3001')
 }
 
 export const API_BASE_URL = getApiUrl()
 
 console.log('🔗 API Base URL:', API_BASE_URL)
-console.log('📱 Is Mobile App:', window.Capacitor !== undefined)
 console.log('🌐 Current hostname:', window.location.hostname)
 console.log('🔍 Full URL:', window.location.href)
+console.log('⚙️  Environment API URL:', import.meta.env.VITE_API_URL || 'Not set')

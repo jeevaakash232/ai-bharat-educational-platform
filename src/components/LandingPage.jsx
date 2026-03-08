@@ -15,7 +15,11 @@ const LandingPage = () => {
   }, [user, navigate])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-[#e0e5ec] perspective-container overflow-x-hidden">
+      {/* 3D Background Orbs */}
+      <div className="orb orb-1"></div>
+      <div className="orb orb-2"></div>
+      <div className="orb orb-3"></div>
       {/* Header - Mobile Responsive */}
       <header className="container mx-auto px-4 md:px-6 py-4 md:py-8">
         <nav className="flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4">
@@ -45,7 +49,7 @@ const LandingPage = () => {
 
         {/* Features Preview - Mobile Responsive Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12 lg:mb-16">
-          <div className="card text-center p-4 md:p-6">
+          <div className="card glass-panel text-center p-4 md:p-6 glow-effect floating" style={{ animationDelay: '0s' }}>
             <Brain className="h-10 w-10 md:h-12 md:w-12 text-indigo-600 mx-auto mb-3 md:mb-4" />
             <h3 className="text-base md:text-lg lg:text-xl font-semibold mb-2">AI Assistant</h3>
             <p className="text-sm md:text-base text-gray-600">
@@ -53,7 +57,7 @@ const LandingPage = () => {
             </p>
           </div>
           
-          <div className="card text-center p-4 md:p-6">
+          <div className="card glass-panel text-center p-4 md:p-6 glow-effect floating" style={{ animationDelay: '0.2s' }}>
             <Award className="h-10 w-10 md:h-12 md:w-12 text-indigo-600 mx-auto mb-3 md:mb-4" />
             <h3 className="text-base md:text-lg lg:text-xl font-semibold mb-2">Interactive Quizzes</h3>
             <p className="text-sm md:text-base text-gray-600">
@@ -61,7 +65,7 @@ const LandingPage = () => {
             </p>
           </div>
           
-          <div className="card text-center p-4 md:p-6">
+          <div className="card glass-panel text-center p-4 md:p-6 glow-effect floating" style={{ animationDelay: '0.4s' }}>
             <Users className="h-10 w-10 md:h-12 md:w-12 text-indigo-600 mx-auto mb-3 md:mb-4" />
             <h3 className="text-base md:text-lg lg:text-xl font-semibold mb-2">Progress Monitoring</h3>
             <p className="text-sm md:text-base text-gray-600">

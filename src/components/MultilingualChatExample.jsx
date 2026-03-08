@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getMultilingualResponse, detectLanguage } from '../services/groqMultilingualService'
+import { getBedrockResponse } from '../services/bedrockService'
 
 /**
  * Example component showing how to use multilingual chatbot
@@ -20,14 +20,9 @@ export default function MultilingualChatExample() {
     setResponse(null)
 
     try {
-      // Optional: Auto-detect language from input
-      const detectedLang = detectLanguage(userInput)
-      console.log('Detected language:', detectedLang)
-
-      // Get dual-language response
-      const result = await getMultilingualResponse(
+      // Get response from AWS Bedrock
+      const result = await getBedrockResponse(
         userInput,
-        userLanguage,
         {
           name: 'Student',
           class: '10',
@@ -35,7 +30,7 @@ export default function MultilingualChatExample() {
         }
       )
 
-      setResponse(result)
+      setResponse({ nativeLanguage: result, english: result })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -75,7 +70,10 @@ export default function MultilingualChatExample() {
             width: '100%', 
             padding: '10px', 
             fontSize: '16px',
-            marginBottom: '10px'
+            marginBottom: '10px',
+            color: '#000000',
+            backgroundColor: '#ffffff',
+            border: '1px solid #d1d5db'
           }}
         />
         <button 

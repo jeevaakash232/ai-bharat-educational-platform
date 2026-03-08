@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getMultilingualResponse } from '../services/groqMultilingualService'
+import { getBedrockResponse } from '../services/bedrockService'
 import { 
   VoiceRecognitionService, 
   TextToSpeechService, 
@@ -10,7 +10,7 @@ import {
 /**
  * Complete Voice-Enabled Chatbot
  * - Voice Input (Speech-to-Text)
- * - AI Processing (Groq)
+ * - AI Processing (AWS Bedrock)
  * - Voice Output (Text-to-Speech)
  */
 export default function VoiceEnabledChatbot() {
@@ -91,10 +91,9 @@ export default function VoiceEnabledChatbot() {
     setError(null)
 
     try {
-      // Get AI response in both languages
-      const response = await getMultilingualResponse(
+      // Get AI response from AWS Bedrock
+      const response = await getBedrockResponse(
         message,
-        userLanguage,
         {
           name: 'Student',
           class: '10',
@@ -103,10 +102,10 @@ export default function VoiceEnabledChatbot() {
       )
 
       // Add AI response to chat
-      addMessage('ai', response.nativeLanguage, response.english)
+      addMessage('ai', response, response)
 
       // Speak the response in user's language
-      speakResponse(response.nativeLanguage, userLanguage)
+      speakResponse(response, userLanguage)
 
     } catch (err) {
       setError(`AI Error: ${err.message}`)

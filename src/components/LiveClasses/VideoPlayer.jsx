@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { API_BASE_URL } from '../../config'
 import { 
   ArrowLeft, 
   Play, 
@@ -21,13 +22,23 @@ import {
 } from 'lucide-react'
 
 const VideoPlayer = () => {
-  const { recordingId } = useParams()
+  const params = useParams()
+  const location = useLocation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const videoRef = useRef(null)
   
+  // Extract recordingId from wildcard route
+  const recordingId = params['*'] || location.pathname.split('/watch-recording/')[1]
+  
+  console.log('🎬 VideoPlayer - Recording ID:', recordingId)
+  console.log('📍 VideoPlayer - Location:', location.pathname)
+  console.log('🔍 VideoPlayer - Params:', params)
+  
   const [recording, setRecording] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [loadingUrl, setLoadingUrl] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -38,10 +49,24 @@ const VideoPlayer = () => {
   const [playbackRate, setPlaybackRate] = useState(1)
 
   useEffect(() => {
+    console.log('🎯 VideoPlayer mounted')
+    console.log('📍 Location:', location.pathname)
+    console.log('🆔 Recording ID from params:', params['*'])
+    console.log('🆔 Recording ID extracted:', recordingId)
+    
     if (!user) {
+      console.log('❌ No user, redirecting to login')
       navigate('/login')
       return
     }
+    
+    if (!recordingId) {
+      console.error('❌ No recording ID found!')
+      setError('No video ID provided')
+      setLoading(false)
+      return
+    }
+    
     loadRecording()
   }, [recordingId, user, navigate])
 
@@ -66,32 +91,147 @@ const VideoPlayer = () => {
 
   const loadRecording = async () => {
     setLoading(true)
+    setError(null)
+    
     try {
-      // Get recordings from localStorage
-      const savedRecordings = JSON.parse(localStorage.getItem('recordedClasses') || '[]')
-      const foundRecording = savedRecordings.find(rec => rec.id === recordingId)
+      console.log('🎬 Loading video with ID:', recordingId)
+      console.log('🔗 Decoded ID:', decodeURIComponent(recordingId))
+      console.log('📍 Full location:', location.pathname)
       
-      if (!foundRecording) {
-        alert('Recording not found')
-        navigate('/live-classes')
-        return
+      // Decode the recording ID (it might be URL encoded)
+      const decodedId = decodeURIComponent(recordingId)
+      
+      console.log('🔍 Looking for video with key:', decodedId)
+      
+      // Fetch all videos to find metadata
+      console.log('📡 Fetching video list from API...')
+      const response = await fetch(`${API_BASE_URL}/api/videos`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load videos: ${response.status} ${response.statusText}`)
+      }
+      
+      const allVideos = await response.json()
+      console.log('✅ Received videos:', allVideos.length)
+      console.log('📋 Available video keys:', allVideos.map(v => v.key).slice(0, 5))
+      
+      // Find the video by key (exact match or decoded match)
+      const foundVideo = allVideos.find(video => 
+        video.key === decodedId || 
+        video.key === recordingId ||
+        video.id === decodedId ||
+        video.id === recordingId
+      )
+      
+      console.log('🔍 Search results:')
+      console.log('   Looking for:', decodedId)
+      console.log('   Also trying:', recordingId)
+      console.log('   Found video:', foundVideo ? foundVideo.title : 'NOT FOUND')
+      
+      if (!foundVideo) {
+        console.error('❌ Video not found in list')
+        console.error('Looking for:', decodedId)
+        console.error('Available keys:', allVideos.map(v => v.key))
+        throw new Error(`Video not found. Looking for: ${decodedId}`)
       }
 
-      setRecording(foundRecording)
+      console.log('✅ Found video:', foundVideo.name)
+      console.log('📹 Video key:', foundVideo.key)
       
-      // Increment view count
-      foundRecording.views = (foundRecording.views || 0) + 1
-      const updatedRecordings = savedRecordings.map(rec => 
-        rec.id === recordingId ? foundRecording : rec
-      )
-      localStorage.setItem('recordedClasses', JSON.stringify(updatedRecordings))
+      // Now fetch the presigned URL for streaming
+      setLoadingUrl(true)
+      console.log('🔗 Fetching presigned URL for:', foundVideo.key)
+      
+      // Use the full key path for the API call
+      const encodedKey = encodeURIComponent(foundVideo.key)
+      const urlResponse = await fetch(`${API_BASE_URL}/api/videos/${encodedKey}`)
+      
+      if (!urlResponse.ok) {
+        const errorText = await urlResponse.text()
+        console.error('❌ URL fetch failed:', errorText)
+        throw new Error(`Failed to get video URL: ${urlResponse.status}`)
+      }
+      
+      const urlData = await urlResponse.json()
+      console.log('✅ Got presigned URL')
+      
+      // Validate the URL
+      if (!urlData.url) {
+        throw new Error('No video URL received from server')
+      }
+      
+      console.log('🔗 Presigned URL received (valid for 1 hour)')
+      
+      // Transform video data to recording format
+      const recordingData = {
+        id: foundVideo.key,
+        key: foundVideo.key,
+        title: foundVideo.metadata?.title || foundVideo.name || 'Untitled Video',
+        description: foundVideo.metadata?.description || '',
+        subject: foundVideo.metadata?.subject || 'General',
+        class: foundVideo.metadata?.class || 'N/A',
+        state: foundVideo.metadata?.state || 'All States',
+        medium: foundVideo.metadata?.medium || 'both',
+        language: foundVideo.metadata?.language || 'English',
+        topic: foundVideo.metadata?.topic || '',
+        chapter: foundVideo.metadata?.chapter || '',
+        term: foundVideo.metadata?.term || '',
+        teacherName: foundVideo.metadata?.uploadedBy || 'Unknown Teacher',
+        teacherId: foundVideo.metadata?.uploadedBy || 'unknown',
+        uploadedAt: foundVideo.lastModified || new Date().toISOString(),
+        duration: parseInt(foundVideo.metadata?.duration) || 0,
+        views: 0,
+        size: foundVideo.size,
+        fileName: foundVideo.name,
+        format: foundVideo.contentType || 'video/mp4',
+        videoUrl: urlData.url, // Presigned S3 URL
+        tags: foundVideo.metadata?.topic ? [foundVideo.metadata.topic] : []
+      }
+      
+      setRecording(recordingData)
+      console.log('✅ Video loaded successfully')
+      console.log('🎬 Video ready to stream')
+      
+      // Set up URL refresh before it expires (refresh after 3.5 hours = 210 minutes)
+      setTimeout(() => {
+        console.log('🔄 Refreshing presigned URL...')
+        refreshVideoUrl(foundVideo.key)
+      }, 210 * 60 * 1000) // 210 minutes (3.5 hours)
       
     } catch (error) {
-      console.error('Error loading recording:', error)
-      alert('Error loading recording')
-      navigate('/live-classes')
+      console.error('❌ Error loading video:', error)
+      setError(error.message || 'Failed to load video')
+    } finally {
+      setLoading(false)
+      setLoadingUrl(false)
     }
-    setLoading(false)
+  }
+
+  const refreshVideoUrl = async (videoKey) => {
+    try {
+      console.log('🔄 Refreshing video URL for:', videoKey)
+      const encodedKey = encodeURIComponent(videoKey)
+      const urlResponse = await fetch(`${API_BASE_URL}/api/videos/${encodedKey}`)
+      
+      if (!urlResponse.ok) {
+        throw new Error('Failed to refresh video URL')
+      }
+      
+      const urlData = await urlResponse.json()
+      
+      if (urlData.url && recording) {
+        setRecording(prev => ({
+          ...prev,
+          videoUrl: urlData.url
+        }))
+        console.log('✅ Video URL refreshed')
+        
+        // Schedule next refresh (3.5 hours)
+        setTimeout(() => refreshVideoUrl(videoKey), 210 * 60 * 1000)
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing video URL:', error)
+    }
   }
 
   const togglePlay = () => {
@@ -179,12 +319,27 @@ const VideoPlayer = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  const downloadVideo = () => {
-    if (recording?.videoUrl) {
+  const downloadVideo = async () => {
+    try {
+      console.log('📥 Downloading video:', recording.title)
+      
+      const response = await fetch(`${API_BASE_URL}/api/videos/${encodeURIComponent(recording.key)}/download`)
+      if (!response.ok) throw new Error('Failed to get download URL')
+      
+      const data = await response.json()
+      
       const link = document.createElement('a')
-      link.href = recording.videoUrl
-      link.download = `${recording.title}.mp4`
+      link.href = data.url
+      link.download = recording.fileName || `${recording.title}.mp4`
+      link.target = '_blank'
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
+      
+      console.log('✅ Download started')
+    } catch (error) {
+      console.error('❌ Download error:', error)
+      alert('Failed to download video: ' + error.message)
     }
   }
 
@@ -204,12 +359,42 @@ const VideoPlayer = () => {
 
   if (!user) return null
 
-  if (loading) {
+  if (loading || loadingUrl) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading video...</p>
+          <p className="text-white text-lg mb-2">
+            {loading ? 'Loading video...' : 'Fetching stream URL...'}
+          </p>
+          <p className="text-gray-400 text-sm">Please wait</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
+            <h2 className="text-2xl font-bold text-red-800 mb-2">Error Loading Video</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={loadRecording}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Try Again
+            </button>
+            <Link
+              to="/live-classes"
+              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Back to Videos
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -219,9 +404,13 @@ const VideoPlayer = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Recording Not Found</h2>
-          <Link to="/live-classes" className="text-indigo-600 hover:underline">
-            Back to Recordings
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Video Not Found</h2>
+          <p className="text-gray-600 mb-4">The video you're looking for doesn't exist.</p>
+          <Link
+            to="/live-classes"
+            className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Back to Videos
           </Link>
         </div>
       </div>
@@ -234,11 +423,56 @@ const VideoPlayer = () => {
       <div className="relative">
         <video
           ref={videoRef}
-          src={recording.videoUrl}
-          className="w-full h-screen object-contain"
+          className="w-full h-screen object-contain bg-black"
+          controls
+          crossOrigin="anonymous"
+          preload="metadata"
           onMouseMove={() => setShowControls(true)}
           onMouseLeave={() => setShowControls(false)}
-        />
+          onError={(e) => {
+            console.error('❌ Video playback error:', e)
+            console.error('Error code:', e.target.error?.code)
+            console.error('Error message:', e.target.error?.message)
+            console.error('Current video URL:', recording?.videoUrl?.substring(0, 100) + '...')
+            
+            let errorMessage = 'Failed to play video. '
+            
+            switch (e.target.error?.code) {
+              case 1: // MEDIA_ERR_ABORTED
+                errorMessage += 'Video loading was aborted. Please try again.'
+                break
+              case 2: // MEDIA_ERR_NETWORK
+                errorMessage += 'Network error occurred. Check your internet connection and try again.'
+                break
+              case 3: // MEDIA_ERR_DECODE
+                errorMessage += 'Video file is corrupted or in an unsupported format.'
+                break
+              case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                errorMessage += 'Video format is not supported or URL has expired. Refreshing...'
+                // Try to refresh the URL automatically
+                if (recording?.key) {
+                  console.log('🔄 Attempting automatic URL refresh...')
+                  refreshVideoUrl(recording.key)
+                  return // Don't set error yet, let refresh attempt work
+                }
+                break
+              default:
+                errorMessage += 'An unknown error occurred. Please refresh the page.'
+            }
+            
+            setError(errorMessage)
+          }}
+          onLoadStart={() => console.log('📹 Video loading started...')}
+          onLoadedMetadata={() => console.log('✅ Video metadata loaded')}
+          onCanPlay={() => console.log('✅ Video can start playing')}
+          onWaiting={() => console.log('⏳ Video buffering...')}
+          onPlaying={() => console.log('▶️ Video playing')}
+        >
+          <source src={recording.videoUrl} type="video/mp4" />
+          <source src={recording.videoUrl} type="video/webm" />
+          <source src={recording.videoUrl} type="video/ogg" />
+          Your browser does not support the video tag.
+        </video>
 
         {/* Video Controls Overlay */}
         <div className={`absolute inset-0 bg-gradient-to-t from-black/50 to-transparent transition-opacity ${showControls ? 'opacity-100' : 'opacity-0'}`}>
@@ -424,17 +658,15 @@ const VideoPlayer = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Duration:</span>
-                    <span className="font-medium">{formatTime(recording.duration || 0)}</span>
+                    <span className="font-medium">{recording.duration || formatTime(duration)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Format:</span>
-                    <span className="font-medium">{recording.format || 'MP4'}</span>
+                    <span className="font-medium">{recording.format || 'video/mp4'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Size:</span>
-                    <span className="font-medium">
-                      {recording.fileSize ? `${(recording.fileSize / (1024 * 1024)).toFixed(1)} MB` : 'N/A'}
-                    </span>
+                    <span className="font-medium">{recording.size || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Uploaded:</span>
