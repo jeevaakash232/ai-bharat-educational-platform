@@ -206,6 +206,13 @@ export async function getVideoUrl(key, expiresIn = 14400) { // 4 hours = 14400 s
   try {
     const client = getS3Client();
     const bucketName = process.env.S3_BUCKET_NAME || 'edulearn-books-storage';
+    const region = process.env.S3_REGION || process.env.AWS_REGION || 'ap-south-1';
+    
+    console.log('🔗 Generating presigned URL with config:', {
+      bucket: bucketName,
+      region: region,
+      key: key
+    });
     
     const command = new GetObjectCommand({
       Bucket: bucketName,
@@ -217,12 +224,15 @@ export async function getVideoUrl(key, expiresIn = 14400) { // 4 hours = 14400 s
     
     const url = await getSignedUrl(client, command, { 
       expiresIn,
+      // Force the correct S3 endpoint format with region
+      signingRegion: region,
       // These headers will be included in the presigned URL
       unhoistableHeaders: new Set(['x-amz-server-side-encryption'])
     });
     
     console.log('✅ Generated presigned URL for video:', key);
     console.log('   Expires in:', expiresIn, 'seconds (', Math.floor(expiresIn / 3600), 'hours)');
+    console.log('   URL format check:', url.includes(region) ? '✅ Region in URL' : '⚠️ Region missing from URL');
     
     return url;
   } catch (error) {
