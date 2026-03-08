@@ -120,13 +120,17 @@ export async function listVideos() {
             state = stateMap[stateFolder] || 'All States';
           }
           
-          // Extract class
-          let classNum = metadata.class || '1';
+          // Extract class from folder structure first, then metadata
+          let classNum = '1'; // default
           if (keyParts.length >= 3) {
             const classMatch = keyParts[2].match(/Class-?(\d+)/i);
             if (classMatch) {
               classNum = classMatch[1];
             }
+          }
+          // Only use metadata if folder structure didn't have class info
+          if (classNum === '1' && metadata.class) {
+            classNum = metadata.class;
           }
           
           // Extract subject
