@@ -34,32 +34,31 @@ Your goal is to make the user feel confident and help them understand completely
 
 /**
  * Get AI response from Amazon Bedrock (Claude) using Converse API
+ * @param {string} userMessage
+ * @param {object} options - { maxTokens, temperature, systemPrompt }
  */
-export async function getBedrockResponse(userMessage) {
+export async function getBedrockResponse(userMessage, options = {}) {
   try {
     const client = getBedrockClient();
+
+    const {
+      maxTokens = 2000,
+      temperature = 0.7,
+      systemPrompt = CLEAR_EXPLANATION_PROMPT,
+    } = options;
     
-    // Use Converse API (newer, simpler API)
     const command = new ConverseCommand({
       modelId: process.env.BEDROCK_MODEL_ID,
       messages: [
         {
           role: 'user',
-          content: [
-            {
-              text: userMessage
-            }
-          ]
+          content: [{ text: userMessage }]
         }
       ],
-      system: [
-        {
-          text: CLEAR_EXPLANATION_PROMPT
-        }
-      ],
+      system: [{ text: systemPrompt }],
       inferenceConfig: {
-        maxTokens: 2000,
-        temperature: 0.7,
+        maxTokens,
+        temperature,
         topP: 0.9
       }
     });

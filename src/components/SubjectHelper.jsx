@@ -152,7 +152,7 @@ const SubjectHelper = ({ onQuestionSelect }) => {
       
       {/* Subject Icons */}
       <div className="flex flex-wrap gap-3 mb-4">
-        {user.subjects.map((subject) => {
+        {[...new Set(user.subjects)].map((subject) => {
           const Icon = subjectIcons[subject] || BookOpen
           const isSelected = selectedSubject === subject
           

@@ -33,6 +33,38 @@ export const AuthProvider = ({ children }) => {
     const syncedUser = syncUserData()
     if (syncedUser) {
       console.log('AuthContext: User synced:', syncedUser.email)
+      // Deduplicate and normalize subjects in case of legacy data
+      if (syncedUser.subjects?.length) {
+        syncedUser.subjects = [...new Set(
+          syncedUser.subjects
+            .map(s => s === 'Language II (English)' ? 'English' : s)
+            .filter(s => s !== 'Language I (Regional)') // remove placeholder, will be re-added below
+        )]
+        // If user has no mother tongue subject, derive and add it
+        const stateLanguageMap = {
+          'Tamil Nadu': 'Tamil', 'Kerala': 'Malayalam', 'Karnataka': 'Kannada',
+          'Andhra Pradesh': 'Telugu', 'Telangana': 'Telugu', 'Maharashtra': 'Marathi',
+          'Gujarat': 'Gujarati', 'West Bengal': 'Bengali', 'Punjab': 'Punjabi',
+          'Haryana': 'Hindi', 'Rajasthan': 'Hindi', 'Madhya Pradesh': 'Hindi',
+          'Uttar Pradesh': 'Hindi', 'Bihar': 'Hindi', 'Jharkhand': 'Hindi',
+          'Chhattisgarh': 'Hindi', 'Uttarakhand': 'Hindi', 'Himachal Pradesh': 'Hindi',
+          'Delhi': 'Hindi', 'Assam': 'Assamese', 'Odisha': 'Odia', 'Goa': 'Konkani',
+          'Manipur': 'Manipuri', 'Tripura': 'Bengali', 'Meghalaya': 'English',
+          'Nagaland': 'English', 'Mizoram': 'Mizo', 'Arunachal Pradesh': 'English',
+          'Sikkim': 'Nepali', 'Jammu and Kashmir': 'Urdu', 'Puducherry': 'Tamil',
+          'Chandigarh': 'Hindi', 'Ladakh': 'Ladakhi'
+        }
+        const lang = stateLanguageMap[syncedUser.selectedState] || syncedUser.stateLanguage
+        if (lang && lang !== 'English') {
+          const hasMotherTongue = syncedUser.subjects.includes(lang)
+          if (!hasMotherTongue) {
+            syncedUser.subjects = [lang, ...syncedUser.subjects]
+          }
+        }
+        // Persist the fix back to localStorage
+        saveCurrentUser(syncedUser)
+        updateUserInDatabase(syncedUser.email, { subjects: syncedUser.subjects })
+      }
       setUser(syncedUser)
       
       // Build profile and fetch predictions for students
@@ -120,7 +152,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (userData) => {
     console.log('AuthContext: Login called for:', userData.email)
-    // Save to both current user and ensure it's in database
+    // Deduplicate and normalize subjects on login
+    if (userData.subjects?.length) {
+      userData = { ...userData, subjects: [...new Set(
+        userData.subjects
+          .map(s => s === 'Language II (English)' ? 'English' : s)
+          .filter(s => s !== 'Language I (Regional)')
+      )] }
+    }
     setUser(userData)
     saveCurrentUser(userData)
     
@@ -157,10 +196,11 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = (profileData) => {
     if (!user) return
-    
-    // Update user in database and get updated user
+    // Deduplicate subjects if present
+    if (profileData.subjects?.length) {
+      profileData = { ...profileData, subjects: [...new Set(profileData.subjects)] }
+    }
     const updatedUser = updateUserInDatabase(user.email, profileData)
-    
     if (updatedUser) {
       setUser(updatedUser)
     }

@@ -1,27 +1,13 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { 
-  Upload, 
-  Video, 
-  ArrowLeft, 
-  FileVideo, 
-  CheckCircle, 
-  AlertCircle,
-  X,
-  Play
-} from 'lucide-react'
+import { Upload, Video, ArrowLeft, FileVideo, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { API_BASE_URL } from '../../config'
 
 const UploadRecording = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    subject: '',
-    class: '',
-    tags: ''
-  })
+  const [formData, setFormData] = useState({ title: '', description: '', subject: '', class: '', tags: '' })
   const [videoFile, setVideoFile] = useState(null)
   const [thumbnailFile, setThumbnailFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -29,500 +15,221 @@ const UploadRecording = () => {
   const [previewUrl, setPreviewUrl] = useState(null)
   const [thumbnailPreview, setThumbnailPreview] = useState(null)
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
+  const handleInputChange = e => setFormData({ ...formData, [e.target.name]: e.target.value })
 
-  // Video validation function (inline to avoid import issues)
   const validateVideoFile = (file) => {
-    const validTypes = [
-      'video/mp4',
-      'video/webm', 
-      'video/ogg',
-      'video/avi',
-      'video/mov',
-      'video/quicktime'
-    ]
-    
-    const maxSize = 500 * 1024 * 1024 // 500MB
-    
+    const valid = ['video/mp4','video/webm','video/ogg','video/avi','video/mov','video/quicktime']
     const errors = []
-    
-    if (!file) {
-      errors.push('No file selected')
-    } else {
-      if (!validTypes.includes(file.type)) {
-        errors.push('Invalid file type. Please use MP4, WebM, OGG, AVI, or MOV')
-      }
-      
-      if (file.size > maxSize) {
-        errors.push('File size must be less than 500MB')
-      }
-      
-      if (file.size < 1024) {
-        errors.push('File is too small')
-      }
-    }
-    
-    return {
-      isValid: errors.length === 0,
-      errors
-    }
-  }
-
-  // Generate unique filename
-  const generateUniqueFileName = (originalName, prefix = '') => {
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 8)
-    const extension = originalName.split('.').pop()
-    
-    return `${prefix}${timestamp}_${randomString}.${extension}`
-  }
-
-  // Simulate S3 upload (for demo purposes)
-  const uploadVideoToS3 = async (file, fileName, onProgress = () => {}) => {
-    return new Promise((resolve) => {
-      let progress = 0
-      const interval = setInterval(() => {
-        progress += Math.random() * 15
-        if (progress >= 100) {
-          progress = 100
-          clearInterval(interval)
-          // Simulate S3 URL
-          const s3Url = `https://edulearn-videos.s3.ap-south-1.amazonaws.com/${fileName}`
-          resolve(s3Url)
-        }
-        onProgress(progress)
-      }, 200)
-    })
-  }
-
-  // Simulate thumbnail upload to S3
-  const uploadThumbnailToS3 = async (file, fileName) => {
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    return `https://edulearn-videos.s3.ap-south-1.amazonaws.com/thumbnails/${fileName}`
+    if (!file) { errors.push('No file selected'); return { isValid: false, errors } }
+    if (!valid.includes(file.type)) errors.push('Invalid file type. Use MP4, WebM, OGG, AVI, or MOV')
+    if (file.size > 500 * 1024 * 1024) errors.push('File must be less than 500MB')
+    if (file.size < 1024) errors.push('File is too small')
+    return { isValid: errors.length === 0, errors }
   }
 
   const handleVideoChange = (e) => {
     const file = e.target.files[0]
-    if (file) {
-      // Use S3 service validation
-      const validation = validateVideoFile(file)
-      if (!validation.isValid) {
-        alert(validation.errors.join('\n'))
-        return
-      }
-
-      setVideoFile(file)
-      
-      // Create preview URL
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    }
+    if (!file) return
+    const v = validateVideoFile(file)
+    if (!v.isValid) { alert(v.errors.join('\n')); return }
+    setVideoFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
   }
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0]
-    if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-      if (!validTypes.includes(file.type)) {
-        alert('Please select a valid image file (JPEG, PNG, WebP)')
-        return
-      }
-
-      setThumbnailFile(file)
-      
-      // Create preview URL
-      const url = URL.createObjectURL(file)
-      setThumbnailPreview(url)
-    }
+    if (!file) return
+    if (!['image/jpeg','image/jpg','image/png','image/webp'].includes(file.type)) { alert('Please select JPEG, PNG, or WebP'); return }
+    setThumbnailFile(file)
+    setThumbnailPreview(URL.createObjectURL(file))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (!videoFile) {
-      alert('Please select a video file')
-      return
-    }
-
-    if (!formData.title || !formData.subject || !formData.class) {
-      alert('Please fill in all required fields')
-      return
-    }
-
-    setUploading(true)
-    setUploadProgress(0)
-
+    if (!videoFile) { alert('Please select a video file'); return }
+    if (!formData.title || !formData.subject || !formData.class) { alert('Please fill in all required fields'); return }
+    setUploading(true); setUploadProgress(0)
     try {
-      // Generate unique filenames using S3 service
-      const videoFileName = generateUniqueFileName(videoFile.name, 'videos/')
-      const thumbnailFileName = thumbnailFile ? generateUniqueFileName(thumbnailFile.name, 'thumbnails/') : null
+      const data = new FormData()
+      data.append('video', videoFile)
+      if (thumbnailFile) data.append('thumbnail', thumbnailFile)
+      data.append('title', formData.title)
+      data.append('description', formData.description)
+      data.append('subject', formData.subject)
+      data.append('class', formData.class)
+      data.append('tags', formData.tags)
+      data.append('uploadedBy', user.email || user.name || 'Unknown')
 
-      // Upload video to S3
-      setUploadProgress(10)
-      const videoUrl = await uploadVideoToS3(videoFile, videoFileName, (progress) => {
-        setUploadProgress(10 + (progress * 0.7)) // 10-80%
+      // Use XHR for real upload progress
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 95))
+          }
+        })
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response)
+          else reject(new Error(`Upload failed: ${xhr.statusText}`))
+        })
+        xhr.addEventListener('error', () => reject(new Error('Network error during upload')))
+        xhr.open('POST', `${API_BASE_URL}/api/videos/upload`)
+        xhr.send(data)
       })
 
-      // Upload thumbnail if provided
-      let thumbnailUrl = null
-      if (thumbnailFile) {
-        setUploadProgress(80)
-        thumbnailUrl = await uploadThumbnailToS3(thumbnailFile, thumbnailFileName)
-        setUploadProgress(95)
-      }
-
-      // Get video duration (simplified)
-      const videoDuration = await getVideoDuration(videoFile)
-
-      // Save recording data
-      const recordingData = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        subject: formData.subject,
-        class: parseInt(formData.class),
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        teacherId: user.id,
-        teacherName: user.fullName,
-        videoUrl: videoUrl,
-        thumbnail: thumbnailUrl,
-        duration: videoDuration,
-        uploadedAt: new Date().toISOString(),
-        views: 0,
-        fileSize: videoFile.size,
-        format: videoFile.type,
-        s3Key: videoFileName // Store S3 key for future operations
-      }
-
-      // Save to localStorage (in real app, this would be an API call)
-      const existingRecordings = JSON.parse(localStorage.getItem('recordedClasses') || '[]')
-      existingRecordings.push(recordingData)
-      localStorage.setItem('recordedClasses', JSON.stringify(existingRecordings))
-
       setUploadProgress(100)
-      
-      // Success message and redirect
-      setTimeout(() => {
-        alert('✅ Recording uploaded successfully to S3!')
-        navigate('/live-classes')
-      }, 1000)
-
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('❌ Upload failed. Please try again.')
-      setUploading(false)
-      setUploadProgress(0)
+      setTimeout(() => { alert('Recording uploaded successfully!'); navigate('/live-classes') }, 800)
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+      setUploading(false); setUploadProgress(0)
     }
   }
 
-  const getVideoDuration = (file) => {
-    return new Promise((resolve) => {
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      video.onloadedmetadata = () => {
-        resolve(Math.round(video.duration))
-      }
-      video.src = URL.createObjectURL(file)
-    })
-  }
-
-  const removeVideo = () => {
-    setVideoFile(null)
-    setPreviewUrl(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
-  }
-
-  const removeThumbnail = () => {
-    setThumbnailFile(null)
-    setThumbnailPreview(null)
-    if (thumbnailPreview) {
-      URL.revokeObjectURL(thumbnailPreview)
-    }
-  }
-
-  if (!user || user.userType !== 'teacher') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">Only teachers can upload recordings</p>
-          <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
-        </div>
+  if (!user || user.userType !== 'teacher') return (
+    <div style={{ minHeight: '100vh', background: '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', background: 'white', borderRadius: 16, padding: 40, border: '1px solid #e5e7eb', maxWidth: 400 }}>
+        <AlertCircle size={48} color="#ef4444" style={{ margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e', marginBottom: 8 }}>Access Denied</h2>
+        <p style={{ color: '#6b7280', marginBottom: 20 }}>Only teachers can upload recordings</p>
+        <Link to="/dashboard" className="edu-btn-primary">Go to Dashboard</Link>
       </div>
-    )
-  }
+    </div>
+  )
+
+  const inputStyle = { width: '100%', padding: '11px 14px', border: '2px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', color: '#1a1a2e', background: '#fafafa', boxSizing: 'border-box' }
+  const labelStyle = { display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6 }
+  const cardStyle = { background: 'white', borderRadius: 16, border: '1px solid #e5e7eb', padding: '24px 28px', boxShadow: '0 4px 20px rgba(79,70,229,0.07)', marginBottom: 20 }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
-          <div className="flex items-center space-x-3 md:space-x-4">
-            <Link to="/live-classes" className="text-gray-600 hover:text-gray-800">
-              <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
+    <div style={{ minHeight: '100vh', background: '#f4f5f7' }}>
+      <header className="edu-dashboard-header">
+        <div className="edu-dashboard-header-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link to="/live-classes" style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowLeft size={16} color="#374151" />
             </Link>
-            <div className="flex items-center space-x-2 md:space-x-3">
-              <Upload className="h-6 w-6 md:h-8 md:w-8 text-indigo-600" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Upload size={18} color="white" />
+              </div>
               <div>
-                <h1 className="text-lg md:text-xl font-bold text-gray-800">Upload Recording</h1>
-                <p className="text-xs md:text-sm text-gray-600">Share your educational content</p>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#1a1a2e', lineHeight: 1 }}>Upload Recording</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Share your educational content</div>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-4xl">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Video Upload Section */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
-              <FileVideo className="h-6 w-6 text-indigo-600" />
-              <span>Video File</span>
-            </h2>
-
+      <main style={{ maxWidth: 800, margin: '0 auto', padding: '24px' }}>
+        <form onSubmit={handleSubmit}>
+          {/* Video Upload */}
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FileVideo size={20} color="#4f46e5" />
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Video File</h2>
+            </div>
             {!videoFile ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-700 mb-2">Upload Video File</h3>
-                <p className="text-gray-500 mb-4">Drag and drop or click to select</p>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="hidden"
-                  id="video-upload"
-                />
-                <label
-                  htmlFor="video-upload"
-                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Video File
-                </label>
-                <p className="text-xs text-gray-400 mt-2">
-                  Supported formats: MP4, WebM, OGG, AVI, MOV (Max: 500MB)
-                </p>
-              </div>
+              <label htmlFor="video-upload" style={{ display: 'block', border: '2px dashed #c7d2fe', borderRadius: 12, padding: '40px 20px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#4f46e5'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#c7d2fe'}>
+                <Upload size={36} color="#a5b4fc" style={{ margin: '0 auto 12px' }} />
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 4 }}>Upload Video File</div>
+                <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 12 }}>Drag and drop or click to select</div>
+                <span style={{ padding: '8px 20px', borderRadius: 8, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', fontSize: 13, fontWeight: 700 }}>Choose File</span>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>MP4, WebM, OGG, AVI, MOV · Max 500MB</div>
+                <input type="file" accept="video/*" onChange={handleVideoChange} id="video-upload" style={{ display: 'none' }} />
+              </label>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <CheckCircle size={20} color="#059669" />
                     <div>
-                      <p className="font-medium text-green-800">{videoFile.name}</p>
-                      <p className="text-sm text-green-600">
-                        {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#065f46' }}>{videoFile.name}</div>
+                      <div style={{ fontSize: 12, color: '#059669' }}>{(videoFile.size / (1024*1024)).toFixed(2)} MB</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeVideo}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                  <button type="button" onClick={() => { setVideoFile(null); setPreviewUrl(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={18} /></button>
                 </div>
-
-                {previewUrl && (
-                  <div className="relative">
-                    <video
-                      src={previewUrl}
-                      controls
-                      className="w-full max-w-md mx-auto rounded-lg"
-                      style={{ maxHeight: '300px' }}
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
-                )}
+                {previewUrl && <video src={previewUrl} controls style={{ width: '100%', maxHeight: 280, borderRadius: 10 }} />}
               </div>
             )}
           </div>
 
-          {/* Thumbnail Upload Section */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Thumbnail (Optional)</h2>
-
+          {/* Thumbnail */}
+          <div style={cardStyle}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e', marginBottom: 16 }}>Thumbnail <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>(Optional)</span></h2>
             {!thumbnailFile ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-lg mx-auto mb-3 flex items-center justify-center">
-                  <Video className="h-8 w-8 text-gray-400" />
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleThumbnailChange}
-                  className="hidden"
-                  id="thumbnail-upload"
-                />
-                <label
-                  htmlFor="thumbnail-upload"
-                  className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Thumbnail
-                </label>
-                <p className="text-xs text-gray-400 mt-2">JPEG, PNG, WebP (Recommended: 1280x720)</p>
-              </div>
+              <label htmlFor="thumb-upload" style={{ display: 'block', border: '2px dashed #e5e7eb', borderRadius: 12, padding: '24px', textAlign: 'center', cursor: 'pointer' }}>
+                <Video size={28} color="#d1d5db" style={{ margin: '0 auto 8px' }} />
+                <span style={{ padding: '6px 16px', borderRadius: 8, background: '#f4f5f7', color: '#374151', fontSize: 13, fontWeight: 600 }}>Choose Thumbnail</span>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>JPEG, PNG, WebP · Recommended 1280×720</div>
+                <input type="file" accept="image/*" onChange={handleThumbnailChange} id="thumb-upload" style={{ display: 'none' }} />
+              </label>
             ) : (
-              <div className="flex items-center space-x-4">
-                <img
-                  src={thumbnailPreview}
-                  alt="Thumbnail preview"
-                  className="w-32 h-20 object-cover rounded-lg border"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-800">{thumbnailFile.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {(thumbnailFile.size / 1024).toFixed(2)} KB
-                  </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <img src={thumbnailPreview} alt="Thumbnail" style={{ width: 120, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a2e' }}>{thumbnailFile.name}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>{(thumbnailFile.size/1024).toFixed(1)} KB</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={removeThumbnail}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <button type="button" onClick={() => { setThumbnailFile(null); setThumbnailPreview(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={18} /></button>
               </div>
             )}
           </div>
 
-          {/* Recording Details */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Recording Details</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Enter recording title"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  required
-                />
+          {/* Details */}
+          <div style={cardStyle}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e', marginBottom: 20 }}>Recording Details</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Title *</label>
+                <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="Enter recording title" style={inputStyle} required />
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Describe what this recording covers"
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Description</label>
+                <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Describe what this recording covers" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
-                </label>
-                <select
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  required
-                >
+                <label style={labelStyle}>Subject *</label>
+                <select name="subject" value={formData.subject} onChange={handleInputChange} style={inputStyle} required>
                   <option value="">Select Subject</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Science">Science</option>
-                  <option value="English">English</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="Social Studies">Social Studies</option>
-                  <option value="Physics">Physics</option>
-                  <option value="Chemistry">Chemistry</option>
-                  <option value="Biology">Biology</option>
-                  <option value="Computer Science">Computer Science</option>
+                  {['Mathematics','Science','English','Hindi','Social Studies','Physics','Chemistry','Biology','Computer Science'].map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class *
-                </label>
-                <select
-                  name="class"
-                  value={formData.class}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  required
-                >
+                <label style={labelStyle}>Class *</label>
+                <select name="class" value={formData.class} onChange={handleInputChange} style={inputStyle} required>
                   <option value="">Select Class</option>
-                  {[...Array(12)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>Class {i + 1}</option>
-                  ))}
+                  {[...Array(12)].map((_,i) => <option key={i+1} value={i+1}>Class {i+1}</option>)}
                 </select>
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (Optional)
-                </label>
-                <input
-                  type="text"
-                  name="tags"
-                  value={formData.tags}
-                  onChange={handleInputChange}
-                  placeholder="Enter tags separated by commas (e.g., algebra, equations, basics)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Tags help students find your content more easily
-                </p>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Tags <span style={{ fontWeight: 400, color: '#9ca3af' }}>(Optional)</span></label>
+                <input type="text" name="tags" value={formData.tags} onChange={handleInputChange} placeholder="algebra, equations, basics" style={inputStyle} />
+                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>Separate tags with commas</div>
               </div>
             </div>
           </div>
 
-          {/* Upload Progress */}
+          {/* Progress */}
           {uploading && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Uploading...</h3>
-              <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                <div
-                  className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+            <div style={cardStyle}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#1a1a2e', marginBottom: 12 }}>Uploading…</div>
+              <div style={{ height: 8, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: 99, width: `${uploadProgress}%`, transition: 'width 0.3s' }} />
               </div>
-              <p className="text-sm text-gray-600">{Math.round(uploadProgress)}% complete</p>
+              <div style={{ fontSize: 13, color: '#6b7280' }}>{Math.round(uploadProgress)}% complete</div>
             </div>
           )}
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
-            <Link
-              to="/live-classes"
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={uploading || !videoFile}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {uploading ? 'Uploading...' : 'Upload Recording'}
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <Link to="/live-classes" style={{ padding: '11px 24px', borderRadius: 10, border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Cancel</Link>
+            <button type="submit" disabled={uploading || !videoFile}
+              style={{ padding: '11px 28px', borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontSize: 14, fontWeight: 700, cursor: uploading || !videoFile ? 'not-allowed' : 'pointer', opacity: uploading || !videoFile ? 0.6 : 1 }}>
+              {uploading ? 'Uploading…' : 'Upload Recording'}
             </button>
           </div>
         </form>

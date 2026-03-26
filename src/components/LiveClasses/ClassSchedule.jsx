@@ -1,27 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { API_BASE_URL } from '../../config'
-import { 
-  Calendar, 
-  Clock, 
-  Users, 
-  Video, 
-  Play,
-  Plus,
-  Search,
-  ArrowLeft,
-  Upload,
-  Eye,
-  Download,
-  RefreshCw
-} from 'lucide-react'
+import { Video, Play, Search, ArrowLeft, Upload, Download, RefreshCw, Calendar, Users } from 'lucide-react'
 
 const RecordedClasses = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [recordings, setRecordings] = useState([])
-  const [filter, setFilter] = useState('all') // all, my-uploads, favorites
+  const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -29,394 +16,200 @@ const RecordedClasses = () => {
   const refreshIntervalRef = useRef(null)
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-    
-    // Initial load
+    if (!user) { navigate('/login'); return }
     loadRecordings()
-    
-    // Set up auto-refresh every 15 seconds
-    refreshIntervalRef.current = setInterval(() => {
-      console.log('🔄 Auto-refreshing videos...')
-      loadRecordings(true) // Silent refresh (no loading state)
-    }, 15000) // 15 seconds
-    
-    // Cleanup interval on unmount
-    return () => {
-      if (refreshIntervalRef.current) {
+
+    const handleVisibility = () => {
+      if (document.hidden) {
         clearInterval(refreshIntervalRef.current)
+      } else {
+        loadRecordings(true)
+        refreshIntervalRef.current = setInterval(() => loadRecordings(true), 15000)
       }
+    }
+
+    refreshIntervalRef.current = setInterval(() => loadRecordings(true), 15000)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      clearInterval(refreshIntervalRef.current)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [user, navigate])
 
-  // Reload when filter changes
-  useEffect(() => {
-    if (user) {
-      loadRecordings()
-    }
-  }, [filter])
+  useEffect(() => { if (user) loadRecordings() }, [filter])
 
   const loadRecordings = async (silent = false) => {
-    if (!silent) {
-      setLoading(true)
-    }
+    if (!silent) setLoading(true)
     setError(null)
-    
     try {
-      console.log('📡 Fetching videos from backend API...')
-      console.log('🔗 API URL:', `${API_BASE_URL}/api/videos`)
-      
       const response = await fetch(`${API_BASE_URL}/api/videos`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const videos = await response.json()
-      console.log('✅ Received videos from API:', videos)
-      console.log('📊 Total videos:', videos.length)
-      
-      // Transform S3 video data to match our recording format
-      const transformedRecordings = videos.map(video => ({
-        id: video.key,
-        key: video.key,
-        title: video.metadata?.title || video.name || 'Untitled Video',
-        description: video.metadata?.description || '',
-        subject: video.metadata?.subject || 'General',
-        class: video.metadata?.class || 'N/A',
-        state: video.metadata?.state || 'All States',
-        medium: video.metadata?.medium || 'both',
-        language: video.metadata?.language || 'English',
-        topic: video.metadata?.topic || '',
-        chapter: video.metadata?.chapter || '',
-        term: video.metadata?.term || '',
-        teacherName: video.metadata?.uploadedBy || 'Unknown Teacher',
-        teacherId: video.metadata?.uploadedBy || 'unknown',
-        uploadedAt: video.lastModified || new Date().toISOString(),
-        duration: parseInt(video.metadata?.duration) || 0,
-        views: 0,
-        size: video.size,
-        url: video.url
+      const transformed = videos.map(v => ({
+        id: v.key, key: v.key,
+        title: v.metadata?.title || v.name || 'Untitled Video',
+        description: v.metadata?.description || '',
+        subject: v.metadata?.subject || 'General',
+        class: v.metadata?.class || 'N/A',
+        teacherName: v.metadata?.uploadedBy || 'Unknown Teacher',
+        teacherId: v.metadata?.uploadedBy || 'unknown',
+        uploadedAt: v.lastModified || new Date().toISOString(),
+        duration: parseInt(v.metadata?.duration) || 0,
+        size: v.size, url: v.url
       }))
-      
-      console.log('🔄 Transformed recordings:', transformedRecordings)
-      
-      // Apply filter
-      let filteredRecordings = transformedRecordings
-      
-      if (filter === 'my-uploads' && user.userType === 'teacher') {
-        filteredRecordings = transformedRecordings.filter(rec => 
-          rec.teacherId === user.email || rec.teacherId === user.id
-        )
-        console.log(`🔍 Filtered to my uploads (${user.email}):`, filteredRecordings.length)
-      }
-      
-      setRecordings(filteredRecordings)
+      let filtered = transformed
+      if (filter === 'my-uploads' && user.userType === 'teacher')
+        filtered = transformed.filter(r => r.teacherId === user.email || r.teacherId === user.id)
+      setRecordings(filtered)
       setLastFetchTime(new Date())
-      
-      if (!silent) {
-        console.log('✅ Videos loaded successfully!')
-      }
-    } catch (error) {
-      console.error('❌ Error loading recordings:', error)
-      setError(error.message)
-      // Don't clear recordings on error, keep showing old data
+    } catch (err) {
+      setError(err.message)
     } finally {
-      if (!silent) {
-        setLoading(false)
-      }
+      if (!silent) setLoading(false)
     }
   }
 
-  const handleManualRefresh = () => {
-    console.log('🔄 Manual refresh triggered')
-    loadRecordings()
-  }
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
+  const formatDuration = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m` }
+  const formatSize = (b) => { if (!b) return ''; const k = 1024, s = ['B','KB','MB','GB'], i = Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i] }
 
-  const watchRecording = (recordingId) => {
-    console.log('🎬 Navigating to video:', recordingId)
-    // Encode the recording ID to handle special characters like slashes
-    const encodedId = encodeURIComponent(recordingId)
-    navigate(`/watch-recording/${encodedId}`)
-  }
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
-  const formatDuration = (seconds) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`
-    }
-    return `${minutes}m`
-  }
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-  }
-
-  const filteredRecordings = recordings.filter(rec => 
-    rec.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = recordings.filter(r =>
+    r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.teacherName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#f4f5f7' }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 md:space-x-4">
-              <Link to="/dashboard" className="text-gray-600 hover:text-gray-800">
-                <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
-              </Link>
-              <div className="flex items-center space-x-2 md:space-x-3">
-                <Video className="h-6 w-6 md:h-8 md:w-8 text-indigo-600" />
-                <div>
-                  <h1 className="text-lg md:text-xl font-bold text-gray-800">Recorded Classes</h1>
-                  <p className="text-xs md:text-sm text-gray-600">
-                    {recordings.length} video{recordings.length !== 1 ? 's' : ''} available
-                    {lastFetchTime && (
-                      <span className="ml-2 text-gray-400">
-                        • Updated {new Date(lastFetchTime).toLocaleTimeString()}
-                      </span>
-                    )}
-                  </p>
+      <header className="edu-dashboard-header">
+        <div className="edu-dashboard-header-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link to="/dashboard" style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowLeft size={16} color="#374151" />
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Video size={18} color="white" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#1a1a2e', lineHeight: 1 }}>Recorded Classes</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                  {recordings.length} video{recordings.length !== 1 ? 's' : ''} available
+                  {lastFetchTime && ` · Updated ${new Date(lastFetchTime).toLocaleTimeString()}`}
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleManualRefresh}
-                disabled={loading}
-                className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                title="Refresh videos"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                <span className="hidden md:inline">Refresh</span>
-              </button>
-              {user.userType === 'teacher' && (
-                <Link
-                  to="/upload-recording"
-                  className="flex items-center space-x-2 px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="hidden md:inline">Upload Recording</span>
-                </Link>
-              )}
-            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => loadRecordings()} disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
+              Refresh
+            </button>
+            {user.userType === 'teacher' && (
+              <Link to="/upload-recording"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                <Upload size={14} /> Upload
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 py-6 md:py-8">
-        {/* Error message */}
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
+        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <div className="text-red-600 text-2xl">⚠️</div>
-              <div>
-                <h3 className="font-semibold text-red-800">Error Loading Videos</h3>
-                <p className="text-red-700 text-sm mt-1">{error}</p>
-                <button
-                  onClick={handleManualRefresh}
-                  className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                >
-                  Try Again
-                </button>
-              </div>
+          <div style={{ background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: 4 }}>Error Loading Videos</div>
+              <div style={{ fontSize: 13, color: '#b91c1c' }}>{error}</div>
+              <button onClick={() => loadRecordings()} style={{ marginTop: 8, padding: '6px 14px', borderRadius: 8, background: '#ef4444', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Try Again</button>
             </div>
           </div>
         )}
 
-        {/* Auto-refresh indicator */}
-        {!loading && !error && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-blue-700 text-sm">
-                <RefreshCw className="h-4 w-4" />
-                <span>Auto-refreshing every 15 seconds • Videos update automatically</span>
-              </div>
-              {lastFetchTime && (
-                <span className="text-blue-600 text-xs">
-                  Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Filters and Search */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          {/* Filter tabs */}
-          <div className="flex space-x-2 bg-white rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                filter === 'all'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              All Recordings
-            </button>
-            {user.userType === 'teacher' && (
-              <button
-                onClick={() => setFilter('my-uploads')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter === 'my-uploads'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                My Uploads
+        {/* Filters + Search */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 10, padding: 4, border: '1px solid #e5e7eb' }}>
+            {['all', ...(user.userType === 'teacher' ? ['my-uploads'] : [])].map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                style={{ padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: filter === f ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : 'transparent', color: filter === f ? 'white' : '#6b7280' }}>
+                {f === 'all' ? 'All Recordings' : 'My Uploads'}
               </button>
-            )}
+            ))}
           </div>
-
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search recordings..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-            />
+          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <Search size={16} color="#9ca3af" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input type="text" placeholder="Search recordings…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', background: 'white', color: '#1a1a2e', boxSizing: 'border-box' }} />
           </div>
         </div>
 
-        {/* Recording list */}
+        {/* Content */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="text-gray-600 mt-4">Loading recordings from S3...</p>
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #e5e7eb', borderTop: '3px solid #4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+            <p style={{ color: '#6b7280', fontSize: 14 }}>Loading recordings…</p>
           </div>
-        ) : filteredRecordings.length === 0 ? (
-          <div className="text-center py-12">
-            <Video className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {searchTerm ? 'No matching recordings found' : 'No recordings found'}
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <Video size={48} color="#d1d5db" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+              {searchTerm ? 'No matching recordings' : 'No recordings yet'}
             </h3>
-            <p className="text-gray-500 mb-4">
-              {searchTerm 
-                ? 'Try adjusting your search terms'
-                : filter === 'my-uploads' 
-                  ? 'You haven\'t uploaded any recordings yet' 
-                  : 'No recorded classes available yet'}
+            <p style={{ color: '#9ca3af', fontSize: 14, marginBottom: 20 }}>
+              {searchTerm ? 'Try different search terms' : 'No recorded classes available yet'}
             </p>
             {user.userType === 'teacher' && !searchTerm && (
-              <Link
-                to="/upload-recording"
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Upload First Recording</span>
+              <Link to="/upload-recording"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+                <Upload size={16} /> Upload First Recording
               </Link>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecordings.map(recording => {
-              console.log('🎬 Rendering video card:', recording.title, recording.key)
-              return (
-                <div key={recording.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden">
-                  {/* Thumbnail */}
-                  <div className="relative h-48 bg-gradient-to-br from-indigo-500 to-purple-600">
-                    {recording.thumbnail ? (
-                      <img 
-                        src={recording.thumbnail} 
-                        alt={recording.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <Video className="h-16 w-16 text-white opacity-80" />
-                      </div>
-                    )}
-                    
-                    {/* Duration overlay */}
-                    {recording.duration > 0 && (
-                      <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                        {formatDuration(recording.duration)}
-                      </div>
-                    )}
-                    
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black bg-opacity-30">
-                      <div className="bg-white bg-opacity-90 rounded-full p-3">
-                        <Play className="h-8 w-8 text-indigo-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    {/* Recording info */}
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">{recording.title}</h3>
-                    {recording.description && (
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{recording.description}</p>
-                    )}
-
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4" />
-                        <span>{recording.teacherName}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatDate(recording.uploadedAt)}</span>
-                      </div>
-                      {recording.size && (
-                        <div className="flex items-center space-x-2">
-                          <Download className="h-4 w-4" />
-                          <span>{formatFileSize(recording.size)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Subject and class badges */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                        {recording.subject}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        Class {recording.class}
-                      </span>
-                    </div>
-
-                    {/* Action button */}
-                    <button
-                      onClick={() => watchRecording(recording.id)}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      <Play className="h-4 w-4" />
-                      <span>Watch Recording</span>
-                    </button>
-                  </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+            {filtered.map(rec => (
+              <div key={rec.id} style={{ background: 'white', borderRadius: 16, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 4px 20px rgba(79,70,229,0.07)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(79,70,229,0.15)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(79,70,229,0.07)' }}>
+                {/* Thumbnail */}
+                <div style={{ height: 180, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  <Video size={48} color="rgba(255,255,255,0.7)" />
+                  {rec.duration > 0 && (
+                    <span style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: 12, padding: '2px 8px', borderRadius: 6 }}>
+                      {formatDuration(rec.duration)}
+                    </span>
+                  )}
                 </div>
-              )
-            })}
+                {/* Info */}
+                <div style={{ padding: '18px 20px' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e', marginBottom: 6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{rec.title}</h3>
+                  {rec.description && <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{rec.description}</p>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
+                      <Users size={13} /> {rec.teacherName}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
+                      <Calendar size={13} /> {formatDate(rec.uploadedAt)}
+                    </div>
+                    {rec.size && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}><Download size={13} /> {formatSize(rec.size)}</div>}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, background: '#eef2ff', color: '#4f46e5', fontSize: 12, fontWeight: 600 }}>{rec.subject}</span>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, background: '#f4f5f7', color: '#6b7280', fontSize: 12 }}>Class {rec.class}</span>
+                  </div>
+                  <button onClick={() => navigate(`/watch-recording/${encodeURIComponent(rec.id)}`)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    <Play size={15} /> Watch Recording
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>

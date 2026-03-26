@@ -361,13 +361,11 @@ const VideoPlayer = () => {
 
   if (loading || loadingUrl) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg mb-2">
-            {loading ? 'Loading video...' : 'Fetching stream URL...'}
-          </p>
-          <p className="text-gray-400 text-sm">Please wait</p>
+      <div style={{ minHeight: '100vh', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, border: '3px solid rgba(255,255,255,0.2)', borderTop: '3px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ color: 'white', fontSize: 16, marginBottom: 6 }}>{loading ? 'Loading video…' : 'Fetching stream URL…'}</p>
+          <p style={{ color: '#9ca3af', fontSize: 13 }}>Please wait</p>
         </div>
       </div>
     )
@@ -375,25 +373,15 @@ const VideoPlayer = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
-            <h2 className="text-2xl font-bold text-red-800 mb-2">Error Loading Video</h2>
-            <p className="text-red-600 mb-4">{error}</p>
+      <div style={{ minHeight: '100vh', background: '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: 440, padding: '0 24px' }}>
+          <div style={{ background: 'white', border: '1px solid #fca5a5', borderRadius: 16, padding: 32, marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#991b1b', marginBottom: 8 }}>Error Loading Video</h2>
+            <p style={{ color: '#b91c1c', fontSize: 14 }}>{error}</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={loadRecording}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Try Again
-            </button>
-            <Link
-              to="/live-classes"
-              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Back to Videos
-            </Link>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={loadRecording} style={{ padding: '10px 24px', borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer' }}>Try Again</button>
+            <Link to="/live-classes" style={{ padding: '10px 24px', borderRadius: 10, background: 'white', border: '1px solid #e5e7eb', color: '#374151', fontWeight: 600, textDecoration: 'none' }}>Back to Videos</Link>
           </div>
         </div>
       </div>
@@ -402,16 +390,11 @@ const VideoPlayer = () => {
 
   if (!recording) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Video Not Found</h2>
-          <p className="text-gray-600 mb-4">The video you're looking for doesn't exist.</p>
-          <Link
-            to="/live-classes"
-            className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Back to Videos
-          </Link>
+      <div style={{ minHeight: '100vh', background: '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e', marginBottom: 8 }}>Video Not Found</h2>
+          <p style={{ color: '#6b7280', marginBottom: 20 }}>The video you're looking for doesn't exist.</p>
+          <Link to="/live-classes" style={{ padding: '10px 24px', borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', fontWeight: 700, textDecoration: 'none' }}>Back to Videos</Link>
         </div>
       </div>
     )
@@ -578,127 +561,73 @@ const VideoPlayer = () => {
       </div>
 
       {/* Video Information Panel */}
-      <div className="bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div style={{ background: 'white', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 32 }}>
             {/* Main Info */}
-            <div className="lg:col-span-2">
-              <h1 className="text-2xl font-bold text-gray-800 mb-4">{recording.title}</h1>
-              
-              <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                <div className="flex items-center space-x-1">
-                  <Eye className="h-4 w-4" />
-                  <span>{recording.views || 0} views</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{new Date(recording.uploadedAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <User className="h-4 w-4" />
-                  <span>{recording.teacherName}</span>
-                </div>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 14 }}>{recording.title}</h1>
+              <div style={{ display: 'flex', gap: 20, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}><Eye size={14} /> {recording.views || 0} views</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}><Calendar size={14} /> {new Date(recording.uploadedAt).toLocaleDateString()}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}><User size={14} /> {recording.teacherName}</div>
               </div>
-
-              <div className="flex items-center space-x-4 mb-6">
-                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
-                  {recording.subject}
-                </span>
-                <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                  Class {recording.class}
-                </span>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                <span style={{ padding: '4px 12px', borderRadius: 20, background: '#eef2ff', color: '#4f46e5', fontSize: 13, fontWeight: 600 }}>{recording.subject}</span>
+                <span style={{ padding: '4px 12px', borderRadius: 20, background: '#f4f5f7', color: '#6b7280', fontSize: 13 }}>Class {recording.class}</span>
               </div>
-
               {recording.description && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Description</h3>
-                  <p className="text-gray-600 leading-relaxed">{recording.description}</p>
+                <div style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e', marginBottom: 8 }}>Description</h3>
+                  <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>{recording.description}</p>
                 </div>
               )}
-
-              {recording.tags && recording.tags.length > 0 && (
+              {recording.tags?.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center space-x-2">
-                    <Tag className="h-5 w-5" />
-                    <span>Tags</span>
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {recording.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Tag size={15} /> Tags</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {recording.tags.map((tag, i) => <span key={i} style={{ padding: '3px 10px', borderRadius: 20, background: '#f4f5f7', color: '#6b7280', fontSize: 13 }}>#{tag}</span>)}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Teacher Info */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-800 mb-2">Instructor</h3>
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                    <User className="h-6 w-6 text-white" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#f4f5f7', borderRadius: 14, padding: '18px 20px' }}>
+                <h3 style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e', marginBottom: 12 }}>Instructor</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={18} color="white" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">{recording.teacherName}</p>
-                    <p className="text-sm text-gray-600">{recording.subject} Teacher</p>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{recording.teacherName}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>{recording.subject} Teacher</div>
                   </div>
                 </div>
               </div>
 
-              {/* Video Stats */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-800 mb-3">Video Details</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Duration:</span>
-                    <span className="font-medium">{recording.duration || formatTime(duration)}</span>
+              <div style={{ background: '#f4f5f7', borderRadius: 14, padding: '18px 20px' }}>
+                <h3 style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e', marginBottom: 12 }}>Video Details</h3>
+                {[['Duration', formatTime(duration) || recording.duration], ['Format', recording.format || 'video/mp4'], ['Uploaded', new Date(recording.uploadedAt).toLocaleDateString()]].map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                    <span style={{ color: '#6b7280' }}>{k}</span>
+                    <span style={{ fontWeight: 600, color: '#1a1a2e' }}>{v}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Format:</span>
-                    <span className="font-medium">{recording.format || 'video/mp4'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Size:</span>
-                    <span className="font-medium">{recording.size || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Uploaded:</span>
-                    <span className="font-medium">
-                      {new Date(recording.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Actions */}
-              <div className="space-y-3">
-                <button
-                  onClick={downloadVideo}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Download Video</span>
-                </button>
-                
-                <button
-                  onClick={shareVideo}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Share2 className="h-4 w-4" />
-                  <span>Share Video</span>
-                </button>
-              </div>
+              <button onClick={downloadVideo} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                <Download size={15} /> Download Video
+              </button>
+              <button onClick={shareVideo} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, background: 'white', border: '1px solid #e5e7eb', color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                <Share2 size={15} /> Share Video
+              </button>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   )
 }

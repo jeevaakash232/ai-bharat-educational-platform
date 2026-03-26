@@ -121,8 +121,8 @@ const Settings = () => {
       const stateLanguage = stateLanguageMap[formData.selectedState] || 'Tamil'
       
       console.log('Settings: Getting subjects for class', classNum, 'stream', formData.stream, 'language', stateLanguage)
-      const subjects = getSubjectsForClass(classNum, formData.stream, stateLanguage)
-        .map(s => s.name)
+      const subjects = [...new Set(getSubjectsForClass(classNum, formData.stream, stateLanguage)
+        .map(s => s.name))]
       console.log('Settings: Subjects:', subjects)
       
       setFormData(prev => ({
@@ -533,7 +533,7 @@ const Settings = () => {
                 ) : null}
                 <div className="flex flex-wrap gap-2">
                   {formData.subjects.length > 0 ? (
-                    formData.subjects.map((subject, index) => (
+                    [...new Set(formData.subjects)].map((subject, index) => (
                       <span
                         key={index}
                         className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"

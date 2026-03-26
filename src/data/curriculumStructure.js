@@ -32,7 +32,7 @@ export const curriculumStructure = {
     classes: [9, 10],
     subjects: [
       { id: 'language1', name: 'Language I (Regional)', order: 1, required: true, isMotherTongue: true },
-      { id: 'language2', name: 'Language II (English)', order: 2, required: true },
+      { id: 'language2', name: 'English', order: 2, required: true },
       { id: 'mathematics', name: 'Mathematics', order: 3, required: true },
       { id: 'science', name: 'Science', order: 4, required: true, subSubjects: ['Physics', 'Chemistry', 'Biology'] },
       { id: 'social', name: 'Social Science', order: 5, required: true, subSubjects: ['History', 'Geography', 'Civics', 'Economics'] }
@@ -111,10 +111,13 @@ export const getSubjectsForClass = (classNum, stream = null, stateLanguage = 'Ta
   const replaceRegionalLanguage = (subjects) => {
     return subjects.map(subject => {
       if (subject.id === 'regional' || subject.id === 'language1') {
-        return {
-          ...subject,
-          name: stateLanguage // Use actual language name like "Tamil", "Telugu", etc.
-        }
+        // If stateLanguage is English, keep as "Regional Language" to avoid duplicate with English subject
+        if (!stateLanguage || stateLanguage === 'English') return subject
+        return { ...subject, name: stateLanguage }
+      }
+      // Normalize legacy "Language II (English)" to just "English"
+      if (subject.id === 'language2') {
+        return { ...subject, name: 'English' }
       }
       return subject
     })

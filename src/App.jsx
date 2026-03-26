@@ -74,6 +74,7 @@ function AppContent() {
             <Route path="/ai-assistant" element={<AIAssistant />} />
             <Route path="/enhanced-ai-assistant" element={<EnhancedAIAssistant />} />
             <Route path="/subject/:subjectName" element={<SubjectPage />} />
+            <Route path="/quiz" element={<Quiz />} />
             <Route path="/quiz/:subjectName" element={<Quiz />} />
             <Route path="/guide-books" element={<GuideBooks />} />
             <Route path="/live-classes" element={<ClassSchedule />} />

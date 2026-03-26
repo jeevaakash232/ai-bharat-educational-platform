@@ -13,6 +13,9 @@ import teacherAssistantRouter from './routes/teacherAssistant.js';
 import emotionAwareRouter from './routes/emotionAware.js';
 import translateRouter from './routes/translate.js';
 import userHistoryRouter from './routes/userHistory.js';
+import quizRouter from './routes/quiz.js';
+import multer from 'multer';
+import { uploadBook } from './services/s3BooksService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -104,10 +107,9 @@ app.use('/api/teacher-assistant', teacherAssistantRouter);
 app.use('/api/emotion-aware', emotionAwareRouter);
 app.use('/api/translate', translateRouter);
 app.use('/api/history', userHistoryRouter);
+app.use('/api/quiz', quizRouter);
 
 // Book upload route (separate endpoint for clarity)
-import multer from 'multer';
-import { uploadBook } from './services/s3BooksService.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),

@@ -53,8 +53,8 @@ const ProfileSetup = () => {
 
   const completeSetup = () => {
     const classNum = parseInt(profileData.class)
-    const subjects = getSubjectsForClass(classNum, profileData.stream, user.stateLanguage || 'Tamil')
-      .map(s => s.name)
+    const subjects = [...new Set(getSubjectsForClass(classNum, profileData.stream, user.stateLanguage || 'Tamil')
+      .map(s => s.name))]
     
     const completeProfile = {
       board: profileData.board,
