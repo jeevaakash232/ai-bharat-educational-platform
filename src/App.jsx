@@ -29,7 +29,6 @@ import SimplePDFViewer from './components/SimplePDFViewer'
 import Settings from './components/Settings'
 import VoiceEnabledChatbot from './components/VoiceEnabledChatbot'
 import VoiceChatDemo from './pages/VoiceChatDemo'
-import VersionChecker from './components/VersionChecker'
 import History from './components/History'
 import BookHistory from './components/BookHistory'
 import QuizHistory from './components/QuizHistory'
@@ -56,7 +55,6 @@ function AppContent() {
 
   return (
     <>
-      <VersionChecker />
       <GlobalNetworkIndicator />
       <AutomationNotifications 
         notifications={notifications} 
