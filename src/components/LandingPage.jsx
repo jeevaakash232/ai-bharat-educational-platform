@@ -37,12 +37,12 @@ const LandingPage = () => {
 
           <ul className="edu-nav-links" style={{ display: 'flex' }}>
             <li><a href="#" className="active">HOME</a></li>
-            <li><a href="https://github.com/jeevaakash232/ai-bharat-educational-platform/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">ABOUT</a></li>
+            <li><a href="#">ABOUT</a></li>
             <li><a href="#">SERVICE</a></li>
-            <li><a href="mailto:aibharath07@gmail.com">CONTACT</a></li>
+            <li><a href="#">CONTACT</a></li>
           </ul>
 
-          <a href="mailto:aibharath07@gmail.com" className="edu-btn-cta">CONTACT US</a>
+          <Link to="/register" className="edu-btn-cta">CONTACT US</Link>
         </div>
       </nav>
 
@@ -180,10 +180,54 @@ const LandingPage = () => {
       </div>
 
       {/* Footer */}
-      <footer style={{ background: '#1a1a2e', padding: '20px 0', textAlign: 'center' }}>
-        <p style={{ color: '#6b7280', fontSize: '13px' }}>
-          © 2024 EduLearn. Empowering education through technology.
-        </p>
+      <footer style={{ background: '#1a1a2e', padding: '32px 0' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 2rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24 }}>
+          {/* Brand */}
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: 'white', marginBottom: 6 }}>EduLearn</div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>Empowering education through technology.</div>
+          </div>
+
+          {/* About / License */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
+            <a
+              href="https://github.com/jeevaakash232/ai-bharat-educational-platform/blob/main/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 13, color: '#6b7280', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              onMouseOver={e => e.currentTarget.style.color = 'white'}
+              onMouseOut={e => e.currentTarget.style.color = '#6b7280'}
+            >
+              {/* GitHub icon */}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836a9.59 9.59 0 012.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+              </svg>
+              MIT License
+            </a>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Contact</div>
+            <a
+              href="mailto:aibharath07@gmail.com"
+              style={{ fontSize: 13, color: '#6b7280', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              onMouseOver={e => e.currentTarget.style.color = 'white'}
+              onMouseOut={e => e.currentTarget.style.color = '#6b7280'}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              aibharath07@gmail.com
+            </a>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid #374151', marginTop: 24, paddingTop: 16, textAlign: 'center' }}>
+          <p style={{ color: '#4b5563', fontSize: 12 }}>© 2024 EduLearn. All rights reserved.</p>
+        </div>
       </footer>
     </div>
   )
