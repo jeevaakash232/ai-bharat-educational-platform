@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getSubjectsForClass, getHigherSecondaryStreams, requiresStreamSelection, getClassLevel } from '../data/curriculumStructure'
-import { BookOpen, ChevronRight, ArrowLeft, GraduationCap } from 'lucide-react'
+import { ArrowLeft, GraduationCap, CheckCircle, ChevronRight } from 'lucide-react'
 
 const ProfileSetup = () => {
   const [step, setStep] = useState(1)
@@ -76,148 +76,106 @@ const ProfileSetup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        <div className="card">
-          {/* Back Button */}
-          <div className="flex items-center mb-6">
-            <button
-              onClick={() => step > 1 ? setStep(step - 1) : navigate('/medium-selection')}
-              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
+    <div className="edu-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
+      <div style={{ maxWidth: 560, width: '100%' }}>
+        <div className="edu-card">
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <button onClick={() => step > 1 ? setStep(step - 1) : navigate('/medium-selection')}
+              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <ArrowLeft size={16} color="#374151" />
             </button>
-          </div>
-          
-          <div className="text-center mb-8">
-            <GraduationCap className="h-16 w-16 text-indigo-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-800">Academic Profile</h2>
-            <p className="text-gray-600 mt-2">Tell us about your education</p>
-          </div>
-
-          {/* Progress Indicator */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center space-x-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>1</div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>2</div>
-              {requiresStreamSelection(parseInt(profileData.class)) && (
-                <>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>3</div>
-                </>
-              )}
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, background: 'var(--edu-gradient)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <GraduationCap size={24} color="white" />
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 4 }}>Academic Profile</h2>
+              <p style={{ fontSize: 13, color: '#6b7280' }}>Tell us about your education</p>
             </div>
+            <div style={{ width: 36 }} />
           </div>
 
-          {/* Step 1: Board Selection */}
+          {/* Progress */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 28 }}>
+            {[1, 2, ...(requiresStreamSelection(parseInt(profileData.class)) ? [3] : [])].map((s, i, arr) => (
+              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: step >= s ? 'var(--edu-gradient)' : '#f4f5f7', border: `2px solid ${step >= s ? '#4f46e5' : '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: step >= s ? 'white' : '#9ca3af' }}>
+                  {step > s ? <CheckCircle size={16} color="white" /> : s}
+                </div>
+                {i < arr.length - 1 && <div style={{ width: 32, height: 2, background: step > s ? '#4f46e5' : '#e5e7eb', borderRadius: 99 }} />}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Board */}
           {step === 1 && (
             <div>
-              <h3 className="text-2xl font-semibold mb-2 text-center">Select Your Board</h3>
-              <p className="text-gray-600 text-center mb-6">Choose your educational board</p>
-              <div className="space-y-3">
-                {boards.map((board) => (
-                  <button
-                    key={board}
-                    onClick={() => handleChange('board', board)}
-                    className={`w-full p-4 text-left border-2 rounded-xl transition-all ${
-                      profileData.board === board
-                        ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                        : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="font-semibold text-lg">{board}</div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', textAlign: 'center', marginBottom: 6 }}>Select Your Board</h3>
+              <p style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', marginBottom: 20 }}>Choose your educational board</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {boards.map(board => (
+                  <button key={board} onClick={() => handleChange('board', board)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 12, border: `2px solid ${profileData.board === board ? '#4f46e5' : '#e5e7eb'}`, background: profileData.board === board ? '#eef2ff' : 'white', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: profileData.board === board ? '#4f46e5' : '#1a1a2e' }}>{board}</span>
+                    {profileData.board === board && <CheckCircle size={18} color="#4f46e5" />}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Step 2: Class Selection */}
+          {/* Step 2: Class */}
           {step === 2 && (
             <div>
-              <h3 className="text-2xl font-semibold mb-2 text-center">Select Your Class</h3>
-              <p className="text-gray-600 text-center mb-6">Choose your current class</p>
-              <div className="grid grid-cols-4 gap-3">
-                {classes.map((classNum) => (
-                  <button
-                    key={classNum}
-                    onClick={() => handleChange('class', classNum.toString())}
-                    className={`p-4 text-center border-2 rounded-xl transition-all ${
-                      profileData.class === classNum.toString()
-                        ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                        : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="text-2xl font-bold">{classNum}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {getClassLevel(classNum).split(' ')[0]}
-                    </div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', textAlign: 'center', marginBottom: 6 }}>Select Your Class</h3>
+              <p style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', marginBottom: 20 }}>Choose your current class</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {classes.map(cls => (
+                  <button key={cls} onClick={() => handleChange('class', cls.toString())}
+                    style={{ padding: '14px 8px', textAlign: 'center', borderRadius: 12, border: `2px solid ${profileData.class === cls.toString() ? '#4f46e5' : '#e5e7eb'}`, background: profileData.class === cls.toString() ? '#eef2ff' : 'white', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: profileData.class === cls.toString() ? '#4f46e5' : '#1a1a2e' }}>{cls}</div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{getClassLevel(cls).split(' ')[0]}</div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Step 3: Stream Selection (for Classes 11-12) */}
+          {/* Step 3: Stream */}
           {step === 3 && requiresStreamSelection(parseInt(profileData.class)) && (
             <div>
-              <h3 className="text-2xl font-semibold mb-2 text-center">Select Your Stream</h3>
-              <p className="text-gray-600 text-center mb-6">Choose your specialization for Classes 11-12</p>
-              <div className="space-y-3">
-                {streams.map((stream) => (
-                  <button
-                    key={stream.id}
-                    onClick={() => handleChange('stream', stream.id)}
-                    className={`w-full p-5 text-left border-2 rounded-xl transition-all ${
-                      profileData.stream === stream.id
-                        ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                        : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="font-semibold text-lg mb-2">{stream.name}</div>
-                    <div className="text-sm text-gray-600">
-                      Subjects: {stream.subjects.map(s => s.name).join(', ')}
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', textAlign: 'center', marginBottom: 6 }}>Select Your Stream</h3>
+              <p style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', marginBottom: 20 }}>Choose your specialization</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {streams.map(stream => (
+                  <button key={stream.id} onClick={() => handleChange('stream', stream.id)}
+                    style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 12, border: `2px solid ${profileData.stream === stream.id ? '#4f46e5' : '#e5e7eb'}`, background: profileData.stream === stream.id ? '#eef2ff' : 'white', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: profileData.stream === stream.id ? '#4f46e5' : '#1a1a2e', marginBottom: 4 }}>{stream.name}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af' }}>{stream.subjects.map(s => s.name).join(', ')}</div>
                     </div>
+                    {profileData.stream === stream.id && <CheckCircle size={18} color="#4f46e5" style={{ flexShrink: 0, marginLeft: 8 }} />}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Subject Preview */}
+          {/* Subject preview */}
           {profileData.class && (step === 2 || step === 3) && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-2">Your Subjects:</h4>
-              <div className="flex flex-wrap gap-2">
-                {getSubjectsForClass(
-                  parseInt(profileData.class), 
-                  profileData.stream,
-                  user.stateLanguage || 'Tamil'
-                ).map((subject, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-white text-blue-700 rounded-full text-sm border border-blue-200"
-                  >
-                    {subject.name}
-                  </span>
+            <div style={{ marginTop: 20, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#4f46e5', marginBottom: 8 }}>Your Subjects</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {getSubjectsForClass(parseInt(profileData.class), profileData.stream, user.stateLanguage || 'Tamil').map((subject, i) => (
+                  <span key={i} style={{ padding: '4px 12px', borderRadius: 20, background: 'white', border: '1px solid #c7d2fe', fontSize: 12, color: '#4f46e5', fontWeight: 600 }}>{subject.name}</span>
                 ))}
               </div>
             </div>
           )}
 
-          <button
-            onClick={handleNext}
-            className="btn btn-primary w-full mt-8 py-3 text-lg"
-            disabled={
-              (step === 1 && !profileData.board) ||
-              (step === 2 && !profileData.class) ||
-              (step === 3 && !profileData.stream)
-            }
-          >
-            {step === 3 || (step === 2 && !requiresStreamSelection(parseInt(profileData.class))) 
-              ? 'Complete Setup' 
-              : 'Next'}
+          <button onClick={handleNext} className="edu-btn-submit" style={{ marginTop: 24 }}
+            disabled={(step === 1 && !profileData.board) || (step === 2 && !profileData.class) || (step === 3 && !profileData.stream)}>
+            {step === 3 || (step === 2 && !requiresStreamSelection(parseInt(profileData.class))) ? 'Complete Setup' : 'Next'}
           </button>
         </div>
       </div>

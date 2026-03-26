@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { BookOpen, Globe, ArrowLeft } from 'lucide-react'
+import { Globe, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react'
 
 const MediumSelection = () => {
   const [selectedMedium, setSelectedMedium] = useState('')
@@ -81,93 +81,61 @@ const MediumSelection = () => {
     }
   ]
 
-  const handleMediumSelect = (medium) => {
-    setSelectedMedium(medium)
-  }
-
+  const handleMediumSelect = (medium) => setSelectedMedium(medium)
   const handleNext = () => {
     if (selectedMedium) {
-      const mediumData = {
-        selectedMedium: selectedMedium.id,
-        mediumName: selectedMedium.name,
-        stateLanguage: stateLanguage
-      }
-      updateProfile(mediumData)
+      updateProfile({ selectedMedium: selectedMedium.id, mediumName: selectedMedium.name, stateLanguage })
       navigate('/profile-setup')
     }
   }
 
-  const handleBack = () => {
-    navigate('/state-selection')
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <div className="max-w-2xl w-full mx-4">
-        <div className="card">
-          <div className="flex items-center mb-6">
-            <button
-              onClick={handleBack}
-              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="flex-1 text-center">
-              <BookOpen className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-gray-800">Select Medium of Instruction</h2>
-              <p className="text-gray-600">Choose your preferred language for learning</p>
-              <div className="mt-2 text-sm text-indigo-600 bg-indigo-50 rounded-lg px-3 py-1 inline-block">
-                Selected State: {user.selectedState}
-              </div>
-            </div>
+    <div className="edu-auth-page">
+      <div className="edu-auth-left">
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.2)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', backdropFilter: 'blur(10px)' }}>
+            <Globe size={32} color="white" />
           </div>
+          <h2 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 10 }}>Medium of Instruction</h2>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, marginBottom: 36, lineHeight: 1.6 }}>
+            Your medium determines the language<br />used for quizzes and AI responses.
+          </p>
+          <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '12px 16px', backdropFilter: 'blur(8px)' }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>Selected State</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{user.selectedState}</div>
+          </div>
+        </div>
+      </div>
 
-          <div className="space-y-3 mb-8">
-            {availableMediums.map((medium) => (
-              <button
-                key={medium.id}
-                onClick={() => handleMediumSelect(medium)}
-                className={`w-full p-5 text-left border-2 rounded-lg transition-all duration-200 hover:shadow-md ${
-                  selectedMedium?.id === medium.id
-                    ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                    : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="text-2xl">{medium.icon}</div>
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-semibold ${
-                      selectedMedium?.id === medium.id ? 'text-indigo-700' : 'text-gray-800'
-                    }`}>
-                      {medium.name}
-                    </h3>
-                    <p className={`text-sm mt-1 ${
-                      selectedMedium?.id === medium.id ? 'text-indigo-600' : 'text-gray-600'
-                    }`}>
-                      {medium.description}
-                    </p>
+      <div className="edu-auth-right">
+        <div className="edu-auth-form-wrap">
+          <button onClick={() => navigate('/state-selection')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 className="edu-auth-title">Select Medium</h1>
+          <p className="edu-auth-subtitle">Step 1b — Choose your language of instruction</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            {availableMediums.map((medium) => {
+              const isSelected = selectedMedium?.id === medium.id
+              return (
+                <button key={medium.id} onClick={() => handleMediumSelect(medium)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 14, border: `2px solid ${isSelected ? '#4f46e5' : '#e5e7eb'}`, background: isSelected ? '#eef2ff' : 'white', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s ease' }}>
+                  <span style={{ fontSize: 28 }}>{medium.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: isSelected ? '#4f46e5' : '#1a1a2e' }}>{medium.name}</div>
+                    <div style={{ fontSize: 13, color: isSelected ? '#6366f1' : '#6b7280', marginTop: 2 }}>{medium.description}</div>
                   </div>
-                  {selectedMedium?.id === medium.id && (
-                    <div className="text-indigo-600">
-                      <Globe className="h-5 w-5" />
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
+                  {isSelected && <CheckCircle size={20} color="#4f46e5" />}
+                </button>
+              )
+            })}
           </div>
 
-          <div className="text-center">
-            <button
-              onClick={handleNext}
-              className={`btn btn-primary px-8 py-3 text-lg ${
-                !selectedMedium ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'
-              }`}
-              disabled={!selectedMedium}
-            >
-              Continue to Class Selection
-            </button>
-          </div>
+          <button onClick={handleNext} className="edu-btn-submit" disabled={!selectedMedium}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            Continue to Profile Setup <ArrowRight size={16} />
+          </button>
         </div>
       </div>
     </div>
