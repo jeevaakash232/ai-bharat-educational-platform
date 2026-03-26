@@ -14,6 +14,7 @@ import emotionAwareRouter from './routes/emotionAware.js';
 import translateRouter from './routes/translate.js';
 import userHistoryRouter from './routes/userHistory.js';
 import quizRouter from './routes/quiz.js';
+import aiRouter from './routes/ai.js';
 import multer from 'multer';
 import { uploadBook } from './services/s3BooksService.js';
 
@@ -108,6 +109,7 @@ app.use('/api/emotion-aware', emotionAwareRouter);
 app.use('/api/translate', translateRouter);
 app.use('/api/history', userHistoryRouter);
 app.use('/api/quiz', quizRouter);
+app.use('/api/ai', aiRouter);
 
 // Book upload route (separate endpoint for clarity)
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { BookOpen, Calculator, Microscope, Globe, Code, PenTool, TrendingUp, Building, FileText, Clock } from 'lucide-react'
-import { getBedrockResponse } from '../services/bedrockService'
 
 const SubjectHelper = ({ onQuestionSelect }) => {
   const { user } = useAuth()

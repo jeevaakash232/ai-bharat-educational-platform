@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getBedrockResponse } from '../services/bedrockService'
+import { getBedrockResponseWithTranslation } from '../services/bedrockService'
 import { 
   VoiceRecognitionService, 
   TextToSpeechService, 
@@ -92,14 +92,7 @@ export default function VoiceEnabledChatbot() {
 
     try {
       // Get AI response from AWS Bedrock
-      const response = await getBedrockResponse(
-        message,
-        {
-          name: 'Student',
-          class: '10',
-          board: 'CBSE'
-        }
-      )
+      const { response } = await getBedrockResponseWithTranslation(message, 'voice-user')
 
       // Add AI response to chat
       addMessage('ai', response, response)

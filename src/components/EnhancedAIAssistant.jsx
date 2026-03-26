@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { ArrowLeft, Send, Mic, BookOpen, Loader, StickyNote, Clock, Database } from 'lucide-react'
-import { getBedrockResponse } from '../services/bedrockService'
+import { getBedrockResponse, getBedrockResponseWithTranslation } from '../services/bedrockService'
 import SubjectHelper from './SubjectHelper'
 import { VoiceRecognitionService } from '../services/voiceService'
 import NotesPanel from './NotesPanel'
@@ -149,18 +149,12 @@ How can I help you learn today?`
       // Online mode - use full AI
       console.log('🚀 Sending message to AWS Bedrock:', currentInput)
       
-      const response = await getBedrockResponse(currentInput, {
-        name: user?.name,
-        class: user?.class,
-        board: user?.board,
-        subjects: user?.subjects
-      })
-      
-      console.log('🤖 AWS Bedrock Response received')
-      
-      if (!response) {
-        throw new Error('Empty AI response')
-      }
+      const { response } = await getBedrockResponseWithTranslation(
+        currentInput,
+        user?.email || user?.id || 'anonymous'
+      )
+
+      if (!response) throw new Error('Empty AI response')
       
       const aiMessage = {
         id: Date.now() + 1,
@@ -325,12 +319,11 @@ How can I help you learn today?`
             response = data.response
           } else {
             // Regular online mode
-            response = await getBedrockResponse(transcript, {
-              name: user?.name,
-              class: user?.class,
-              board: user?.board,
-              subjects: user?.subjects
-            })
+            const { response: voiceResponse } = await getBedrockResponseWithTranslation(
+              transcript,
+              user?.email || user?.id || 'anonymous'
+            )
+            response = voiceResponse
           }
           
           const aiMessage = {

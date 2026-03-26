@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ArrowLeft, Send, Mic, Image, Youtube, BookOpen, Loader, StickyNote, Clock } from 'lucide-react'
-import { getBedrockResponse } from '../services/bedrockService'
+import { getBedrockResponse, getBedrockResponseWithTranslation } from '../services/bedrockService'
 import SubjectHelper from './SubjectHelper'
 import { VoiceRecognitionService, getLanguageCode } from '../services/voiceService'
 import NotesPanel from './NotesPanel'
@@ -118,19 +118,13 @@ How can I help you learn today?`
       console.log('🚀 Sending message to AWS Bedrock:', currentInput)
       console.log('👤 User context:', user)
       
-      // Get response from AWS Bedrock with subject restrictions
-      const response = await getBedrockResponse(currentInput, {
-        name: user?.name,
-        class: user?.class,
-        board: user?.board,
-        subjects: user?.subjects
-      })
-      
-      console.log('🤖 AWS Bedrock Response received')
-      
-      if (!response) {
-        throw new Error('Empty AI response')
-      }
+      // Use translation-aware endpoint since user may type in regional language
+      const { response } = await getBedrockResponseWithTranslation(
+        currentInput,
+        user?.email || user?.id || 'anonymous'
+      )
+
+      if (!response) throw new Error('Empty AI response')
       
       // Get bilingual version of the response
       const bilingualResponse = await getBilingual(response)
@@ -275,12 +269,10 @@ Please try again or rephrase your question.`
 
         try {
           // Get response from AWS Bedrock
-          const response = await getBedrockResponse(transcript, {
-            name: user?.name,
-            class: user?.class,
-            board: user?.board,
-            subjects: user?.subjects
-          })
+          const { response } = await getBedrockResponseWithTranslation(
+            transcript,
+            user?.email || user?.id || 'anonymous'
+          )
           
           const aiMessage = {
             id: Date.now() + 1,

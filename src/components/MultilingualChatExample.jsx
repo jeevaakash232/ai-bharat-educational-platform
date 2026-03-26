@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getBedrockResponse } from '../services/bedrockService'
+import { getBedrockResponseWithTranslation } from '../services/bedrockService'
 
 /**
  * Example component showing how to use multilingual chatbot
@@ -21,15 +21,7 @@ export default function MultilingualChatExample() {
 
     try {
       // Get response from AWS Bedrock
-      const result = await getBedrockResponse(
-        userInput,
-        {
-          name: 'Student',
-          class: '10',
-          board: 'CBSE'
-        }
-      )
-
+      const { response: result } = await getBedrockResponseWithTranslation(userInput, 'multilingual-user')
       setResponse({ nativeLanguage: result, english: result })
     } catch (err) {
       setError(err.message)

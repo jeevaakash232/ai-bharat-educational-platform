@@ -1,94 +1,69 @@
-// Secure Bedrock Service - Calls backend API instead of exposing AWS credentials
 import axios from 'axios';
 import { API_BASE_URL } from '../config.js';
 
 const BACKEND_API_URL = `${API_BASE_URL}/api`;
 
 /**
- * Get AI response from backend (secure - no AWS credentials exposed)
- * @param {string} userMessage - The user's message/prompt
- * @param {object} userContext - User context (name, class, subjects, etc.)
- * @returns {Promise<string>} - AI response
+ * Fast AI response — skips language detection & translation.
+ * Use this for all English prompts (math, subject help, etc.)
  */
 export const getBedrockResponse = async (userMessage, userContext = null) => {
   try {
-    console.log('🚀 Sending message to secure backend API...');
-    console.log('🔗 Backend URL:', BACKEND_API_URL);
-    
-    const response = await axios.post(`${BACKEND_API_URL}/chat`, {
+    const response = await axios.post(`${BACKEND_API_URL}/ai/ask`, {
       message: userMessage,
-      userId: userContext?.email || userContext?.id || 'anonymous'
     });
 
     if (response.data.success) {
-      console.log('✅ Backend API Success!');
-      console.log(`🌐 Detected language: ${response.data.language.name}`);
       return response.data.response;
-    } else {
-      throw new Error('Backend API returned unsuccessful response');
     }
-
+    throw new Error('AI request failed');
   } catch (error) {
-    console.error('❌ Backend API Error:', error);
-    
-    if (error.response) {
-      // Backend returned an error
-      return `❌ **AI Service Error**
+    console.error('❌ AI Error:', error);
 
-**Error**: ${error.response.data.message || error.response.data.error}
-
-Please try again or contact support.`;
-    } else if (error.request) {
-      // Backend not reachable
-      return `❌ **Backend Connection Error**
-
-**Error**: Cannot connect to AI backend server
-
-**Backend URL**: ${BACKEND_API_URL}
-
-**Possible causes:**
-1. Backend server is starting up (wait 30-60 seconds for cold start)
-2. Network connectivity issue
-3. Backend service is down
-
-Please try again in a moment.`;
-    } else {
-      return `❌ **Unexpected Error**
-
-**Error**: ${error.message}
-
-Please try again.`;
+    if (error.request && !error.response) {
+      return `❌ **Connection Error**\n\nCannot reach the AI server. Please check your connection and try again.\n\nBackend: ${BACKEND_API_URL}`;
     }
+    return `❌ **AI Error**\n\n${error.response?.data?.message || error.message}\n\nPlease try again.`;
   }
 };
 
 /**
- * Check if backend is configured and reachable
- * @returns {Promise<boolean>}
+ * AI response with automatic language translation.
+ * Use this when the user may be typing in a regional language.
  */
+export const getBedrockResponseWithTranslation = async (userMessage, userId = 'anonymous') => {
+  try {
+    const response = await axios.post(`${BACKEND_API_URL}/chat`, {
+      message: userMessage,
+      userId,
+    });
+
+    if (response.data.success) {
+      return {
+        response: response.data.response,
+        language: response.data.language,
+        sessionId: response.data.sessionId,
+      };
+    }
+    throw new Error('Chat request failed');
+  } catch (error) {
+    console.error('❌ Chat Error:', error);
+    return {
+      response: `❌ **Error**\n\n${error.response?.data?.message || error.message}\n\nPlease try again.`,
+      language: { code: 'en', name: 'English' },
+    };
+  }
+};
+
 export const isBedrockConfigured = async () => {
   try {
-    const response = await axios.get(`${BACKEND_API_URL.replace('/api', '')}/health`);
+    const response = await axios.get(`${API_BASE_URL}/health`);
     return response.data.status === 'ok';
-  } catch (error) {
-    console.error('Backend health check failed:', error.message);
+  } catch {
     return false;
   }
 };
 
-/**
- * Get Bedrock configuration info
- * @returns {object}
- */
-export const getBedrockConfig = () => {
-  return {
-    backendUrl: BACKEND_API_URL,
-    configured: true
-  };
-};
+export const getBedrockConfig = () => ({ backendUrl: BACKEND_API_URL, configured: true });
 
-export default {
-  getBedrockResponse,
-  isBedrockConfigured,
-  getBedrockConfig
-};
+export default { getBedrockResponse, getBedrockResponseWithTranslation, isBedrockConfigured, getBedrockConfig };
