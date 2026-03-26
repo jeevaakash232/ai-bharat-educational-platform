@@ -37,12 +37,12 @@ const LandingPage = () => {
 
           <ul className="edu-nav-links" style={{ display: 'flex' }}>
             <li><a href="#" className="active">HOME</a></li>
-            <li><a href="#">ABOUT</a></li>
+            <li><a href="https://github.com/jeevaakash232/ai-bharat-educational-platform/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">ABOUT</a></li>
             <li><a href="#">SERVICE</a></li>
-            <li><a href="#">CONTACT</a></li>
+            <li><a href="mailto:aibharath07@gmail.com">CONTACT</a></li>
           </ul>
 
-          <Link to="/register" className="edu-btn-cta">CONTACT US</Link>
+          <a href="mailto:aibharath07@gmail.com" className="edu-btn-cta">CONTACT US</a>
         </div>
       </nav>
 
