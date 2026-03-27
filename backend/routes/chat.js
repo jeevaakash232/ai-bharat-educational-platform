@@ -6,6 +6,12 @@ import { storeChatSession } from '../services/s3Service.js';
 
 const router = express.Router();
 
+// Supported Indian language codes for translation
+const SUPPORTED_INDIAN_LANGS = new Set(['hi', 'ta', 'te', 'kn', 'ml', 'bn', 'mr', 'gu', 'pa', 'or', 'as', 'ur']);
+
+// Minimum confidence to trust language detection
+const MIN_CONFIDENCE = 0.85;
+
 /**
  * POST /api/chat
  * Main chat endpoint with translation and AI response
@@ -14,78 +20,60 @@ router.post('/', async (req, res) => {
   try {
     const { message, userId } = req.body;
     
-    // Validation
     if (!message || !userId) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        message: 'Both message and userId are required'
-      });
+      return res.status(400).json({ error: 'Missing required fields', message: 'Both message and userId are required' });
     }
-
-    console.log(`\n📨 New chat request from user: ${userId}`);
-    console.log(`💬 Message: ${message}`);
 
     // Step 1: Detect language
     const detectedLanguage = await detectLanguage(message);
-    console.log(`🌐 Detected language: ${detectedLanguage.name} (${detectedLanguage.code})`);
+    console.log(`🌐 Detected: ${detectedLanguage.name} (${detectedLanguage.code}) confidence: ${detectedLanguage.confidence}`);
 
-    // Step 2: Translate to English (if not already English)
+    // Only translate if:
+    // - It's a known Indian language (not random European language)
+    // - Confidence is high enough
+    // - It's not already English
+    const shouldTranslate = 
+      detectedLanguage.code !== 'en' &&
+      SUPPORTED_INDIAN_LANGS.has(detectedLanguage.code) &&
+      detectedLanguage.confidence >= MIN_CONFIDENCE;
+
+    // Step 2: Translate to English if needed
     let translatedMessage = message;
-    if (detectedLanguage.code !== 'en') {
+    if (shouldTranslate) {
       translatedMessage = await translateToEnglish(message, detectedLanguage.code);
       console.log(`🔄 Translated to English: ${translatedMessage}`);
     }
 
-    // Step 3: Get AI response from Bedrock
+    // Step 3: Get AI response
     const aiResponseEnglish = await getBedrockResponse(translatedMessage);
-    console.log(`🤖 AI response received`);
 
-    // Step 4: Translate AI response back to original language
+    // Step 4: Translate response back only if we translated the input
     let finalResponse = aiResponseEnglish;
-    if (detectedLanguage.code !== 'en') {
+    if (shouldTranslate) {
       finalResponse = await translateFromEnglish(aiResponseEnglish, detectedLanguage.code);
       console.log(`🔄 Translated back to ${detectedLanguage.name}`);
     }
 
-    // Step 5: Store chat session in S3
-    const chatData = {
+    // Step 5: Store session (fire and forget — don't block response)
+    storeChatSession(userId, {
       sessionId: uuidv4(),
       userId,
       timestamp: new Date().toISOString(),
-      language: {
-        code: detectedLanguage.code,
-        name: detectedLanguage.name,
-        confidence: detectedLanguage.confidence
-      },
-      userMessage: {
-        original: message,
-        translated: translatedMessage
-      },
-      aiResponse: {
-        english: aiResponseEnglish,
-        translated: finalResponse
-      }
-    };
+      language: { code: detectedLanguage.code, name: detectedLanguage.name, confidence: detectedLanguage.confidence },
+      userMessage: { original: message, translated: translatedMessage },
+      aiResponse: { english: aiResponseEnglish, translated: finalResponse }
+    }).catch(err => console.error('S3 store error (non-fatal):', err));
 
-    await storeChatSession(userId, chatData);
-
-    // Step 6: Return response
     res.json({
       success: true,
       response: finalResponse,
-      language: {
-        code: detectedLanguage.code,
-        name: detectedLanguage.name
-      },
-      sessionId: chatData.sessionId
+      language: { code: shouldTranslate ? detectedLanguage.code : 'en', name: shouldTranslate ? detectedLanguage.name : 'English' },
+      sessionId: uuidv4()
     });
 
   } catch (error) {
     console.error('❌ Chat endpoint error:', error);
-    res.status(500).json({
-      error: 'Chat processing failed',
-      message: error.message
-    });
+    res.status(500).json({ error: 'Chat processing failed', message: error.message });
   }
 });
 
