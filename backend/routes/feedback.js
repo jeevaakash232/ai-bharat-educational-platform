@@ -1,6 +1,6 @@
 import express from 'express';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { sendFeedbackEmail } from '../services/emailService.js';
 
@@ -59,6 +59,17 @@ router.get('/', async (req, res) => {
     res.json({ success: true, feedback: items });
   } catch (err) {
     console.error('Feedback fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** DELETE /api/feedback/:id — delete a review (teacher/admin only) */
+router.delete('/:id', async (req, res) => {
+  try {
+    await getClient().send(new DeleteCommand({ TableName: TABLE, Key: { id: req.params.id } }));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Feedback delete error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Send, MessageSquare, X, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, MessageSquare, X, ThumbsUp, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { API_BASE_URL } from '../config'
 
@@ -40,6 +40,16 @@ const Feedback = ({ onClose }) => {
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [expanded, setExpanded] = useState(null)
+
+  const canDelete = user?.userType === 'teacher' || user?.email === 'aibharath07@gmail.com'
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this review?')) return
+    try {
+      await fetch(`${API_BASE_URL}/api/feedback/${id}`, { method: 'DELETE' })
+      setReviews(prev => prev.filter(r => r.id !== id))
+    } catch { alert('Failed to delete') }
+  }
 
   useEffect(() => {
     if (tab === 'reviews') loadReviews()
@@ -198,9 +208,18 @@ const Feedback = ({ onClose }) => {
                           <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{r.userName}</div>
                           <div style={{ fontSize: 11, color: '#9ca3af' }}>{r.userType} · {r.category}</div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <StarRating value={r.rating} readonly />
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(r.createdAt).toLocaleDateString()}</span>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                            <StarRating value={r.rating} readonly />
+                            <span style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(r.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          {canDelete && (
+                            <button onClick={() => handleDelete(r.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', flexShrink: 0 }}
+                              title="Delete review">
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, margin: 0,
