@@ -1,23 +1,33 @@
 import { useState, useEffect } from 'react'
-import { Star, Send, MessageSquare, X, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, MessageSquare, X, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { API_BASE_URL } from '../config'
 
 const CATEGORIES = ['General', 'AI Assistant', 'Quiz', 'Live Classes', 'Books', 'Performance', 'UI/UX', 'Bug Report']
 
-const StarRating = ({ value, onChange, readonly = false }) => (
-  <div style={{ display: 'flex', gap: 4 }}>
-    {[1, 2, 3, 4, 5].map(s => (
-      <button key={s} type="button" onClick={() => !readonly && onChange(s)}
-        style={{ background: 'none', border: 'none', cursor: readonly ? 'default' : 'pointer', padding: 2 }}>
-        <Star size={readonly ? 16 : 24}
-          fill={s <= value ? '#f59e0b' : 'none'}
-          color={s <= value ? '#f59e0b' : '#d1d5db'}
-        />
-      </button>
-    ))}
-  </div>
-)
+const StarRating = ({ value, onChange, readonly = false }) => {
+  if (readonly) {
+    return (
+      <div style={{ display: 'flex', gap: 2 }}>
+        {[1, 2, 3, 4, 5].map(s => (
+          <span key={s} style={{ fontSize: 14, color: s <= value ? '#f59e0b' : '#d1d5db', lineHeight: 1 }}>
+            {s <= value ? '★' : '☆'}
+          </span>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[1, 2, 3, 4, 5].map(s => (
+        <button key={s} type="button" onClick={() => onChange(s)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, fontSize: 28, lineHeight: 1, color: s <= value ? '#f59e0b' : '#d1d5db' }}>
+          {s <= value ? '★' : '☆'}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 const Feedback = ({ onClose }) => {
   const { user } = useAuth()
