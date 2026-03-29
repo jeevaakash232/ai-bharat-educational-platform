@@ -180,7 +180,7 @@ const Feedback = ({ onClose }) => {
                       return (
                         <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', width: 8 }}>{s}</span>
-                          <Star size={10} fill="white" color="white" />
+                          <span style={{ fontSize: 10, color: 'white' }}>★</span>
                           <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 99, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${pct}%`, background: 'white', borderRadius: 99 }} />
                           </div>
