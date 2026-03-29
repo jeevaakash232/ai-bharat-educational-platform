@@ -3,6 +3,7 @@
  * Passwords are hashed using a simple hash before storage.
  * NOTE: For production, use a proper backend with bcrypt.
  */
+import { syncUserToDb, updateUserInDb } from '../services/userDbService.js'
 
 const STORAGE_KEYS = {
   REGISTERED_USERS: 'registeredUsers',
@@ -65,6 +66,9 @@ export const updateUserInDatabase = (email, updates) => {
   users[idx] = { ...users[idx], ...safeUpdates }
   saveRegisteredUsers(users)
 
+  // Sync update to DynamoDB (non-blocking)
+  updateUserInDb(email, safeUpdates)
+
   const currentUser = getCurrentUser()
   if (currentUser && currentUser.email === email) {
     const updatedUser = { ...currentUser, ...safeUpdates }
@@ -93,6 +97,8 @@ export const registerUser = (userData) => {
   saveRegisteredUsers(users)
 
   const { password, ...safeUser } = newUser
+  // Sync to DynamoDB (non-blocking)
+  syncUserToDb(safeUser)
   return { success: true, user: safeUser }
 }
 

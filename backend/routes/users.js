@@ -1,0 +1,54 @@
+import express from 'express';
+import { saveUser, getUserByEmail, updateUser, deleteUser } from '../services/userService.js';
+
+const router = express.Router();
+
+/** GET /api/users/:email */
+router.get('/:email', async (req, res) => {
+  try {
+    const user = await getUserByEmail(decodeURIComponent(req.params.email));
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error('GET user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** POST /api/users — create or update user */
+router.post('/', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    const user = await saveUser(req.body);
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error('POST user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** PATCH /api/users/:email — partial update */
+router.patch('/:email', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email);
+    const updated = await updateUser(email, req.body);
+    res.json({ success: true, user: updated });
+  } catch (err) {
+    console.error('PATCH user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** DELETE /api/users/:email */
+router.delete('/:email', async (req, res) => {
+  try {
+    await deleteUser(decodeURIComponent(req.params.email));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
