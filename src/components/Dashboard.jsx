@@ -96,11 +96,28 @@ const Dashboard = () => {
           <p>Ready to continue your learning journey? Let's make today count.</p>
         </div>
 
+        {/* Unique ID — always visible for students */}
+        {user.userType === 'student' && !user.profileComplete && (
+          <div style={{ background: 'var(--edu-gradient)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 2 }}>Your Unique Student ID</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'white', letterSpacing: '0.08em' }}>{user.id}</div>
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', flex: 1 }}>Share this ID with your teacher or parent so they can monitor your progress.</div>
+          </div>
+        )}
+
         {/* Profile Info */}
         {user.userType === 'student' && user.profileComplete && (
           <div className="edu-card" style={{ marginBottom: 24 }}>
             <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: '#1a1a2e' }}>Your Profile</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              {/* Unique ID — always shown first */}
+              <div style={{ background: 'var(--edu-gradient)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 2 }}>Your Unique ID</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'white', letterSpacing: '0.05em' }}>{user.id}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Share with teacher/parent</div>
+              </div>
               {[
                 user.selectedState && ['State', user.selectedState],
                 user.mediumName && ['Medium', user.mediumName],
