@@ -41,7 +41,10 @@ const Feedback = ({ onClose }) => {
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [expanded, setExpanded] = useState(null)
 
-  const canDelete = user?.userType === 'teacher' || user?.email === 'aibharath07@gmail.com'
+  const canDelete = (review) =>
+    user?.userType === 'teacher' ||
+    user?.email === 'aibharath07@gmail.com' ||
+    user?.email === review.userEmail
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this review?')) return
@@ -213,7 +216,7 @@ const Feedback = ({ onClose }) => {
                             <StarRating value={r.rating} readonly />
                             <span style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(r.createdAt).toLocaleDateString()}</span>
                           </div>
-                          {canDelete && (
+                          {canDelete(r) && (
                             <button onClick={() => handleDelete(r.id)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', flexShrink: 0 }}
                               title="Delete review">
