@@ -10,7 +10,9 @@ const Register = () => {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
-  const { handleGoogleSignIn } = useGoogleAuth()
+  const { handleGoogleSignIn, completeGoogleSignIn } = useGoogleAuth()
+  const [pendingGoogleUser, setPendingGoogleUser] = useState(null)
+  const [selectedRole, setSelectedRole] = useState('student')
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
@@ -33,7 +35,7 @@ const Register = () => {
   }
 
   const handleGoogleSignInClick = async () => {
-    await handleGoogleSignIn(setLoading)
+    await handleGoogleSignIn(setLoading, setPendingGoogleUser)
   }
 
   return (
@@ -115,6 +117,42 @@ const Register = () => {
           </p>
         </div>
       </div>
+
+      {/* Google Role Selection Modal */}
+      {pendingGoogleUser && (
+        <div className="edu-modal-overlay">
+          <div className="edu-modal">
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e', marginBottom: 6 }}>Welcome, {pendingGoogleUser.name?.split(' ')[0]}!</h3>
+            <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>How will you be using EduLearn?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {[
+                { value: 'student', label: 'Student', desc: 'I want to learn and take quizzes' },
+                { value: 'teacher', label: 'Teacher', desc: 'I want to teach and upload content' },
+                { value: 'parent', label: 'Parent', desc: "I want to monitor my child's progress" },
+              ].map(({ value, label, desc }) => (
+                <button key={value} onClick={() => setSelectedRole(value)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, border: `2px solid ${selectedRole === value ? '#4f46e5' : '#e5e7eb'}`, background: selectedRole === value ? '#eef2ff' : 'white', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: selectedRole === value ? 'var(--edu-gradient)' : '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 16 }}>{value === 'student' ? '🎓' : value === 'teacher' ? '👨‍🏫' : '👨‍👩‍👧'}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: selectedRole === value ? '#4f46e5' : '#1a1a2e' }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af' }}>{desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => completeGoogleSignIn(pendingGoogleUser, selectedRole, setLoading)} className="edu-btn-submit" style={{ flex: 1 }}>
+                Continue as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+              </button>
+              <button onClick={() => setPendingGoogleUser(null)} style={{ flex: 0, padding: '13px 16px', borderRadius: 12, border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: 14, color: '#6b7280' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

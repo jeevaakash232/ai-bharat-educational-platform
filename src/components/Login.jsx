@@ -8,9 +8,11 @@ import { BookOpen, GraduationCap, Users, Star } from 'lucide-react'
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '', userType: 'student' })
   const [loading, setLoading] = useState(false)
+  const [pendingGoogleUser, setPendingGoogleUser] = useState(null)
+  const [selectedRole, setSelectedRole] = useState('student')
   const { login } = useAuth()
   const navigate = useNavigate()
-  const { handleGoogleSignIn } = useGoogleAuth()
+  const { handleGoogleSignIn, completeGoogleSignIn } = useGoogleAuth()
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
@@ -70,7 +72,7 @@ const Login = () => {
           <h1 className="edu-auth-title">Welcome Back!</h1>
           <p className="edu-auth-subtitle">Sign in to continue your learning journey</p>
 
-          <button type="button" onClick={() => handleGoogleSignIn(setLoading)} className="edu-btn-google" disabled={loading}>
+          <button type="button" onClick={() => handleGoogleSignIn(setLoading, setPendingGoogleUser)} className="edu-btn-google" disabled={loading}>
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -113,6 +115,42 @@ const Login = () => {
           </p>
         </div>
       </div>
+
+      {/* Google Role Selection Modal */}
+      {pendingGoogleUser && (
+        <div className="edu-modal-overlay">
+          <div className="edu-modal">
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e', marginBottom: 6 }}>Welcome, {pendingGoogleUser.name?.split(' ')[0]}!</h3>
+            <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>How will you be using EduLearn?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {[
+                { value: 'student', label: 'Student', desc: 'I want to learn and take quizzes' },
+                { value: 'teacher', label: 'Teacher', desc: 'I want to teach and upload content' },
+                { value: 'parent', label: 'Parent', desc: 'I want to monitor my child\'s progress' },
+              ].map(({ value, label, desc }) => (
+                <button key={value} onClick={() => setSelectedRole(value)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, border: `2px solid ${selectedRole === value ? '#4f46e5' : '#e5e7eb'}`, background: selectedRole === value ? '#eef2ff' : 'white', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: selectedRole === value ? 'var(--edu-gradient)' : '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 16 }}>{value === 'student' ? '🎓' : value === 'teacher' ? '👨‍🏫' : '👨‍👩‍👧'}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: selectedRole === value ? '#4f46e5' : '#1a1a2e' }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af' }}>{desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => completeGoogleSignIn(pendingGoogleUser, selectedRole, setLoading)} className="edu-btn-submit" style={{ flex: 1 }}>
+                Continue as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+              </button>
+              <button onClick={() => setPendingGoogleUser(null)} style={{ flex: 0, padding: '13px 16px', borderRadius: 12, border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: 14, color: '#6b7280' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
