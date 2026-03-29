@@ -51,26 +51,31 @@ const UploadRecording = () => {
     setUploading(true); setUploadProgress(0)
     try {
       const data = new FormData()
-      data.append('video', videoFile)
-      if (thumbnailFile) data.append('thumbnail', thumbnailFile)
+      // Backend multer expects field name 'videoFile'
+      data.append('videoFile', videoFile)
       data.append('title', formData.title)
       data.append('description', formData.description)
       data.append('subject', formData.subject)
       data.append('class', formData.class)
       data.append('tags', formData.tags)
       data.append('uploadedBy', user.email || user.name || 'Unknown')
+      // Required by backend validation
+      data.append('state', user.selectedState || 'All States')
+      data.append('medium', user.mediumName || 'English Medium')
+      data.append('language', user.stateLanguage || 'English')
 
-      // Use XHR for real upload progress
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest()
         xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 95))
-          }
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 95))
         })
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response)
-          else reject(new Error(`Upload failed: ${xhr.statusText}`))
+          else {
+            let msg = `Upload failed (${xhr.status})`
+            try { msg = JSON.parse(xhr.response)?.message || msg } catch {}
+            reject(new Error(msg))
+          }
         })
         xhr.addEventListener('error', () => reject(new Error('Network error during upload')))
         xhr.open('POST', `${API_BASE_URL}/api/videos/upload`)

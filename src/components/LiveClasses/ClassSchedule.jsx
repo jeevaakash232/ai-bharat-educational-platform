@@ -47,15 +47,18 @@ const RecordedClasses = () => {
       const videos = await response.json()
       const transformed = videos.map(v => ({
         id: v.key, key: v.key,
-        title: v.metadata?.title || v.name || 'Untitled Video',
-        description: v.metadata?.description || '',
-        subject: v.metadata?.subject || 'General',
-        class: v.metadata?.class || 'N/A',
-        teacherName: v.metadata?.uploadedBy || 'Unknown Teacher',
-        teacherId: v.metadata?.uploadedBy || 'unknown',
-        uploadedAt: v.lastModified || new Date().toISOString(),
-        duration: parseInt(v.metadata?.duration) || 0,
-        size: v.size, url: v.url
+        title: v.title || v.name || 'Untitled Video',
+        description: v.description || '',
+        subject: v.subject || 'General',
+        class: v.class || 'N/A',
+        teacherName: v.uploadedBy || 'Unknown Teacher',
+        teacherId: v.uploadedBy || 'unknown',
+        uploadedAt: v.lastModified || v.uploadedAt || new Date().toISOString(),
+        duration: parseInt(v.duration) || 0,
+        size: v.size,
+        // Use streamUrl from S3 service (relative path to backend)
+        url: v.streamUrl || v.url || null,
+        streamUrl: v.streamUrl || null,
       }))
       let filtered = transformed
       if (filter === 'my-uploads' && user.userType === 'teacher')
