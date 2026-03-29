@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { BookOpen, Brain, Award, LogOut, User, Book, Settings as SettingsIcon, Trash2, Video, Clock, TrendingUp, Sparkles, Briefcase, Heart, Target, Users, Search } from 'lucide-react'
+import { BookOpen, Brain, Award, LogOut, User, Book, Settings as SettingsIcon, Trash2, Video, Clock, TrendingUp, Sparkles, Briefcase, Heart, Target, Users, Search, MessageSquare } from 'lucide-react'
 import { initializeStudentData } from '../utils/autoDataPopulator'
 import StudentMonitor from './StudentMonitor'
+import Feedback from './Feedback'
 
 const Dashboard = () => {
   const { user, logout, predictions, predictionsLoading } = useAuth()
   const navigate = useNavigate()
   const [showMonitor, setShowMonitor] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
 
   const handleLogout = () => { logout(); navigate('/') }
 
@@ -77,6 +79,9 @@ const Dashboard = () => {
             <Link to="/history" style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
               <Clock size={14} /> <span className="hidden md:inline">History</span>
             </Link>
+            <button onClick={() => setShowFeedback(true)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+              <MessageSquare size={14} /> <span className="hidden md:inline">Feedback</span>
+            </button>
             <button onClick={handleLogout} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--edu-gradient)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'white', fontWeight: 700 }}>
               <LogOut size={14} /> Logout
             </button>
@@ -238,6 +243,7 @@ const Dashboard = () => {
         )}
 
         {showMonitor && <StudentMonitor onClose={() => setShowMonitor(false)} />}
+        {showFeedback && <Feedback onClose={() => setShowFeedback(false)} />}
       </main>
     </div>
   )
