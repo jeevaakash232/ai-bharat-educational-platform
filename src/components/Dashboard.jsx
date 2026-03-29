@@ -1,12 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { BookOpen, Brain, Award, LogOut, User, Book, Settings as SettingsIcon, Trash2, Video, Clock, TrendingUp, Sparkles, Briefcase, Heart, Target } from 'lucide-react'
+import { BookOpen, Brain, Award, LogOut, User, Book, Settings as SettingsIcon, Trash2, Video, Clock, TrendingUp, Sparkles, Briefcase, Heart, Target, Users, Search } from 'lucide-react'
 import { initializeStudentData } from '../utils/autoDataPopulator'
+import StudentMonitor from './StudentMonitor'
 
 const Dashboard = () => {
   const { user, logout, predictions, predictionsLoading } = useAuth()
   const navigate = useNavigate()
+  const [showMonitor, setShowMonitor] = useState(false)
 
   const handleLogout = () => { logout(); navigate('/') }
 
@@ -110,26 +112,30 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <h3 style={{ fontWeight: 800, fontSize: 18, color: '#1a1a2e', marginBottom: 16 }}>Quick Actions</h3>
-        <div className="edu-grid-4" style={{ marginBottom: 32 }}>
-          {quickActions.map(({ to, icon: Icon, label, desc, color, bg, badge }) => (
-            <Link key={to} to={to} style={{ textDecoration: 'none' }}>
-              <div className="edu-card" style={{ height: '100%' }}>
-                <div className="edu-card-icon" style={{ background: bg }}>
-                  <Icon size={22} color={color} />
-                </div>
-                <div className="edu-card-title">{label}</div>
-                <div className="edu-card-desc">{desc}</div>
-                {badge && (
-                  <div style={{ marginTop: 10, display: 'inline-block', padding: '4px 10px', borderRadius: 20, background: bg, color, fontSize: 13, fontWeight: 700 }}>
-                    {badge}
+        {/* Quick Actions — students only */}
+        {user.userType === 'student' && (
+          <>
+            <h3 style={{ fontWeight: 800, fontSize: 18, color: '#1a1a2e', marginBottom: 16 }}>Quick Actions</h3>
+            <div className="edu-grid-4" style={{ marginBottom: 32 }}>
+              {quickActions.map(({ to, icon: Icon, label, desc, color, bg, badge }) => (
+                <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+                  <div className="edu-card" style={{ height: '100%' }}>
+                    <div className="edu-card-icon" style={{ background: bg }}>
+                      <Icon size={22} color={color} />
+                    </div>
+                    <div className="edu-card-title">{label}</div>
+                    <div className="edu-card-desc">{desc}</div>
+                    {badge && (
+                      <div style={{ marginTop: 10, display: 'inline-block', padding: '4px 10px', borderRadius: 20, background: bg, color, fontSize: 13, fontWeight: 700 }}>
+                        {badge}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Subjects */}
         {user.userType === 'student' && user.subjects && (
@@ -156,33 +162,82 @@ const Dashboard = () => {
         {/* Teacher / Parent */}
         {user.userType !== 'student' && (
           <div>
-            {user.userType === 'teacher' && (
-              <div className="edu-grid-3" style={{ marginBottom: 24 }}>
-                {[
-                  { to: '/admin', icon: BookOpen, label: 'Admin Panel', desc: 'Manage books and monitor platform', color: '#4f46e5', bg: '#eef2ff' },
-                  { to: '/upload-books', icon: Brain, label: 'Upload Books', desc: 'Add new textbooks and guides', color: '#059669', bg: '#ecfdf5' },
-                  { to: '/guide-books', icon: Award, label: 'View Books', desc: 'Browse all available books', color: '#0891b2', bg: '#ecfeff' },
-                ].map(({ to, icon: Icon, label, desc, color, bg }) => (
-                  <Link key={to} to={to} style={{ textDecoration: 'none' }}>
-                    <div className="edu-card">
-                      <div className="edu-card-icon" style={{ background: bg }}><Icon size={22} color={color} /></div>
-                      <div className="edu-card-title">{label}</div>
-                      <div className="edu-card-desc">{desc}</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-            <div style={{ textAlign: 'center', padding: '48px 0' }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 8 }}>
-                {user.userType === 'parent' ? 'Parent Dashboard' : 'Teacher Dashboard'}
-              </h2>
-              <p style={{ color: '#6b7280', fontSize: 15 }}>
-                {user.userType === 'parent' ? "Monitor your child's progress and performance" : 'Manage your classes and educational content'}
-              </p>
+            {/* Monitor Student button — both teacher and parent */}
+            <div style={{ marginBottom: 24 }}>
+              <button onClick={() => setShowMonitor(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', borderRadius: 14, background: 'var(--edu-gradient)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}>
+                <Search size={18} /> Monitor Student by ID
+              </button>
+              <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>Enter a student's unique ID or email to view their profile and subjects</p>
             </div>
+
+            {user.userType === 'teacher' && (
+              <>
+                {/* Teacher profile info */}
+                {(user.selectedState || user.board || user.class) && (
+                  <div className="edu-card" style={{ marginBottom: 24 }}>
+                    <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: '#1a1a2e' }}>Your Teaching Profile</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+                      {[
+                        user.selectedState && ['State', user.selectedState],
+                        user.mediumName && ['Medium', user.mediumName],
+                        user.board && ['Board', user.board],
+                        user.class && ['Class', `Class ${user.class}`],
+                      ].filter(Boolean).map(([k, v]) => (
+                        <div key={k} style={{ background: '#f4f5f7', borderRadius: 8, padding: '10px 14px' }}>
+                          <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, marginBottom: 2 }}>{k}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <h3 style={{ fontWeight: 800, fontSize: 18, color: '#1a1a2e', marginBottom: 16 }}>Teacher Tools</h3>
+                <div className="edu-grid-3" style={{ marginBottom: 24 }}>
+                  {[
+                    { to: '/live-classes', icon: Video, label: 'Recorded Classes', desc: 'View all uploaded class recordings', color: '#0891b2', bg: '#ecfeff' },
+                    { to: '/upload-recording', icon: Video, label: 'Upload Recording', desc: 'Upload a new class recording', color: '#4f46e5', bg: '#eef2ff' },
+                    { to: '/teacher-assistant', icon: Sparkles, label: 'AI Content Generator', desc: 'Generate lessons, questions & notes', color: '#7c3aed', bg: '#f5f3ff' },
+                    { to: '/admin', icon: BookOpen, label: 'Admin Panel', desc: 'Manage books and platform content', color: '#059669', bg: '#ecfdf5' },
+                    { to: '/upload-books', icon: Book, label: 'Upload Books', desc: 'Add new textbooks and guides', color: '#d97706', bg: '#fffbeb' },
+                    { to: '/guide-books', icon: Award, label: 'View Books', desc: 'Browse all available books', color: '#db2777', bg: '#fdf2f8' },
+                  ].map(({ to, icon: Icon, label, desc, color, bg }) => (
+                    <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+                      <div className="edu-card">
+                        <div className="edu-card-icon" style={{ background: bg }}><Icon size={22} color={color} /></div>
+                        <div className="edu-card-title">{label}</div>
+                        <div className="edu-card-desc">{desc}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {user.userType === 'parent' && (
+              <>
+                <h3 style={{ fontWeight: 800, fontSize: 18, color: '#1a1a2e', marginBottom: 16 }}>Parent Tools</h3>
+                <div className="edu-grid-3" style={{ marginBottom: 24 }}>
+                  {[
+                    { to: '/guide-books', icon: Book, label: 'Study Books', desc: 'Browse books your child uses', color: '#059669', bg: '#ecfdf5' },
+                    { to: '/live-classes', icon: Video, label: 'Recorded Classes', desc: 'Watch class recordings', color: '#0891b2', bg: '#ecfeff' },
+                  ].map(({ to, icon: Icon, label, desc, color, bg }) => (
+                    <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+                      <div className="edu-card">
+                        <div className="edu-card-icon" style={{ background: bg }}><Icon size={22} color={color} /></div>
+                        <div className="edu-card-title">{label}</div>
+                        <div className="edu-card-desc">{desc}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
+
+        {showMonitor && <StudentMonitor onClose={() => setShowMonitor(false)} />}
       </main>
     </div>
   )
