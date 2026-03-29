@@ -2,6 +2,7 @@ import express from 'express';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
+import { sendFeedbackEmail } from '../services/emailService.js';
 
 const router = express.Router();
 const TABLE = process.env.DYNAMODB_FEEDBACK_TABLE || 'EduLearnFeedback';
@@ -39,6 +40,10 @@ router.post('/', async (req, res) => {
     };
 
     await getClient().send(new PutCommand({ TableName: TABLE, Item: item }));
+
+    // Send email notification (non-blocking)
+    sendFeedbackEmail(item).catch(() => {});
+
     res.json({ success: true, id: item.id });
   } catch (err) {
     console.error('Feedback save error:', err);
