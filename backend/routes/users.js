@@ -1,7 +1,43 @@
 import express from 'express';
 import { saveUser, getUserByEmail, updateUser, deleteUser } from '../services/userService.js';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const router = express.Router();
+
+const TABLE = process.env.DYNAMODB_USERS_TABLE || 'EduLearnUsers';
+let docClient = null;
+function getDocClient() {
+  if (!docClient) {
+    const raw = new DynamoDBClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: { accessKeyId: process.env.AWS_ACCESS_KEY_ID?.trim(), secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.trim() },
+    });
+    docClient = DynamoDBDocumentClient.from(raw);
+  }
+  return docClient;
+}
+
+/** GET /api/users/search/:id — find student by numeric ID */
+router.get('/search/:id', async (req, res) => {
+  try {
+    const id = req.params.id
+    // Scan DynamoDB for matching id field
+    const result = await getDocClient().send(new ScanCommand({
+      TableName: TABLE,
+      FilterExpression: '#id = :id AND userType = :type',
+      ExpressionAttributeNames: { '#id': 'id' },
+      ExpressionAttributeValues: { ':id': Number(id), ':type': 'student' },
+      Limit: 1,
+    }))
+    const user = result.Items?.[0] || null
+    if (!user) return res.status(404).json({ error: 'Not found' })
+    res.json({ success: true, user })
+  } catch (err) {
+    console.error('Search by ID error:', err)
+    res.status(500).json({ error: err.message })
+  }
+});
 
 /** GET /api/users/:email */
 router.get('/:email', async (req, res) => {

@@ -1,27 +1,44 @@
 import { useState } from 'react'
-import { Search, User, BookOpen, TrendingUp, Award, Clock, AlertTriangle, CheckCircle, X } from 'lucide-react'
-import { getRegisteredUsers } from '../utils/authStorage'
+import { Search, BookOpen, Award, Clock, AlertTriangle, X } from 'lucide-react'
+import { API_BASE_URL } from '../config'
 
 const StudentMonitor = ({ onClose }) => {
   const [query, setQuery] = useState('')
   const [student, setStudent] = useState(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setError(''); setStudent(null)
     if (!query.trim()) { setError('Enter a student ID or email'); return }
+    setLoading(true)
+    try {
+      const q = query.trim()
+      let found = null
 
-    const users = getRegisteredUsers()
-    // Search by email or numeric ID
-    const found = users.find(u =>
-      u.userType === 'student' && (
-        u.email?.toLowerCase() === query.toLowerCase() ||
-        String(u.id) === query.trim()
-      )
-    )
+      // Try by email first (DynamoDB key)
+      if (q.includes('@')) {
+        const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user?.userType === 'student') found = data.user
+        }
+      } else {
+        // Search by numeric ID — scan all users and match by id field
+        const res = await fetch(`${API_BASE_URL}/api/users/search/${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const data = await res.json()
+          found = data.user || null
+        }
+      }
 
-    if (!found) { setError('No student found with that ID or email'); return }
-    setStudent(found)
+      if (!found) { setError('No student found with that ID or email'); return }
+      setStudent(found)
+    } catch {
+      setError('Search failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const InfoRow = ({ label, value }) => value ? (
@@ -54,8 +71,8 @@ const StudentMonitor = ({ onClose }) => {
             className="edu-input"
             style={{ flex: 1 }}
           />
-          <button onClick={handleSearch} className="edu-btn-submit" style={{ width: 'auto', padding: '0 20px' }}>
-            <Search size={16} />
+          <button onClick={handleSearch} className="edu-btn-submit" style={{ width: 'auto', padding: '0 20px' }} disabled={loading}>
+            {loading ? <span className="edu-spinner" /> : <Search size={16} />}
           </button>
         </div>
 
