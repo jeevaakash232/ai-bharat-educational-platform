@@ -10,6 +10,7 @@ import { buildStudentProfile, hasValidProfile } from '../utils/studentProfileBui
 import { predictStudyScore, getRiskSubjects, simulateImprovement } from '../services/studyTwinApi'
 import { getStudentProfile } from '../utils/studentDataCollector'
 import { trackLogin, trackLogout } from '../services/userHistoryTracker'
+import { fetchUserFromDb, syncUserToDb } from '../services/userDbService'
 
 const AuthContext = createContext()
 
@@ -28,53 +29,68 @@ export const AuthProvider = ({ children }) => {
   const [predictionsLoading, setPredictionsLoading] = useState(false)
 
   useEffect(() => {
-    console.log('AuthContext: Initializing...')
-    // Sync user data on mount - ensures latest data from database
-    const syncedUser = syncUserData()
-    if (syncedUser) {
-      console.log('AuthContext: User synced:', syncedUser.email)
-      // Deduplicate and normalize subjects in case of legacy data
-      if (syncedUser.subjects?.length) {
-        syncedUser.subjects = [...new Set(
-          syncedUser.subjects
-            .map(s => s === 'Language II (English)' ? 'English' : s)
-            .filter(s => s !== 'Language I (Regional)') // remove placeholder, will be re-added below
-        )]
-        // If user has no mother tongue subject, derive and add it
-        const stateLanguageMap = {
-          'Tamil Nadu': 'Tamil', 'Kerala': 'Malayalam', 'Karnataka': 'Kannada',
-          'Andhra Pradesh': 'Telugu', 'Telangana': 'Telugu', 'Maharashtra': 'Marathi',
-          'Gujarat': 'Gujarati', 'West Bengal': 'Bengali', 'Punjab': 'Punjabi',
-          'Haryana': 'Hindi', 'Rajasthan': 'Hindi', 'Madhya Pradesh': 'Hindi',
-          'Uttar Pradesh': 'Hindi', 'Bihar': 'Hindi', 'Jharkhand': 'Hindi',
-          'Chhattisgarh': 'Hindi', 'Uttarakhand': 'Hindi', 'Himachal Pradesh': 'Hindi',
-          'Delhi': 'Hindi', 'Assam': 'Assamese', 'Odisha': 'Odia', 'Goa': 'Konkani',
-          'Manipur': 'Manipuri', 'Tripura': 'Bengali', 'Meghalaya': 'English',
-          'Nagaland': 'English', 'Mizoram': 'Mizo', 'Arunachal Pradesh': 'English',
-          'Sikkim': 'Nepali', 'Jammu and Kashmir': 'Urdu', 'Puducherry': 'Tamil',
-          'Chandigarh': 'Hindi', 'Ladakh': 'Ladakhi'
-        }
-        const lang = stateLanguageMap[syncedUser.selectedState] || syncedUser.stateLanguage
-        if (lang && lang !== 'English') {
-          const hasMotherTongue = syncedUser.subjects.includes(lang)
-          if (!hasMotherTongue) {
-            syncedUser.subjects = [lang, ...syncedUser.subjects]
+    const init = async () => {
+      // First try localStorage (fast path)
+      let syncedUser = syncUserData()
+
+      // If no local user, try to restore from DynamoDB using last known email
+      if (!syncedUser) {
+        const lastEmail = localStorage.getItem('edulearn_last_email')
+        if (lastEmail) {
+          console.log('AuthContext: Restoring from DynamoDB for', lastEmail)
+          try {
+            const dbUser = await fetchUserFromDb(lastEmail)
+            if (dbUser) {
+              saveCurrentUser(dbUser)
+              updateUserInDatabase(dbUser.email, dbUser)
+              syncedUser = dbUser
+              console.log('AuthContext: Profile restored from DynamoDB ✅')
+            }
+          } catch (e) {
+            console.warn('DynamoDB restore failed:', e.message)
           }
         }
-        // Persist the fix back to localStorage
-        saveCurrentUser(syncedUser)
-        updateUserInDatabase(syncedUser.email, { subjects: syncedUser.subjects })
       }
-      setUser(syncedUser)
-      
-      // Build profile and fetch predictions for students
-      if (syncedUser.userType === 'student') {
-        initializeStudentPredictions(syncedUser)
+
+      if (syncedUser) {
+        localStorage.setItem('edulearn_last_email', syncedUser.email)
+        // Normalize subjects
+        if (syncedUser.subjects?.length) {
+          syncedUser.subjects = [...new Set(
+            syncedUser.subjects
+              .map(s => s === 'Language II (English)' ? 'English' : s)
+              .filter(s => s !== 'Language I (Regional)')
+          )]
+          const stateLanguageMap = {
+            'Tamil Nadu': 'Tamil', 'Kerala': 'Malayalam', 'Karnataka': 'Kannada',
+            'Andhra Pradesh': 'Telugu', 'Telangana': 'Telugu', 'Maharashtra': 'Marathi',
+            'Gujarat': 'Gujarati', 'West Bengal': 'Bengali', 'Punjab': 'Punjabi',
+            'Haryana': 'Hindi', 'Rajasthan': 'Hindi', 'Madhya Pradesh': 'Hindi',
+            'Uttar Pradesh': 'Hindi', 'Bihar': 'Hindi', 'Jharkhand': 'Hindi',
+            'Chhattisgarh': 'Hindi', 'Uttarakhand': 'Hindi', 'Himachal Pradesh': 'Hindi',
+            'Delhi': 'Hindi', 'Assam': 'Assamese', 'Odisha': 'Odia', 'Goa': 'Konkani',
+            'Manipur': 'Manipuri', 'Tripura': 'Bengali', 'Meghalaya': 'English',
+            'Nagaland': 'English', 'Mizoram': 'Mizo', 'Arunachal Pradesh': 'English',
+            'Sikkim': 'Nepali', 'Jammu and Kashmir': 'Urdu', 'Puducherry': 'Tamil',
+            'Chandigarh': 'Hindi', 'Ladakh': 'Ladakhi'
+          }
+          const lang = stateLanguageMap[syncedUser.selectedState] || syncedUser.stateLanguage
+          if (lang && lang !== 'English' && !syncedUser.subjects.includes(lang)) {
+            syncedUser.subjects = [lang, ...syncedUser.subjects]
+          }
+          saveCurrentUser(syncedUser)
+          updateUserInDatabase(syncedUser.email, { subjects: syncedUser.subjects })
+        }
+        setUser(syncedUser)
+        if (syncedUser.userType === 'student') {
+          initializeStudentPredictions(syncedUser)
+        }
+      } else {
+        console.log('AuthContext: No user found')
       }
-    } else {
-      console.log('AuthContext: No user found')
+      setLoading(false)
     }
-    setLoading(false)
+    init()
   }, [])
 
   /**
@@ -162,9 +178,9 @@ export const AuthProvider = ({ children }) => {
     }
     setUser(userData)
     saveCurrentUser(userData)
-    
-    // Ensure user is in registered users database
-    updateUserInDatabase(userData.email, userData)
+    localStorage.setItem('edulearn_last_email', userData.email)
+    // Sync full profile to DynamoDB
+    syncUserToDb(userData)
     console.log('AuthContext: User logged in successfully')
 
     // Track login activity
