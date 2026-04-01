@@ -22,15 +22,20 @@ function getDocClient() {
 router.get('/search/:id', async (req, res) => {
   try {
     const id = req.params.id
-    // Scan DynamoDB for matching id field
-    const result = await getDocClient().send(new ScanCommand({
-      TableName: TABLE,
-      FilterExpression: '#id = :id AND userType = :type',
-      ExpressionAttributeNames: { '#id': 'id' },
-      ExpressionAttributeValues: { ':id': Number(id), ':type': 'student' },
-      Limit: 1,
-    }))
-    const user = result.Items?.[0] || null
+    // Try both Number and String versions of the id (DynamoDB stores what was sent)
+    let user = null
+
+    for (const idVal of [Number(id), String(id)]) {
+      const result = await getDocClient().send(new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: '#id = :id',
+        ExpressionAttributeNames: { '#id': 'id' },
+        ExpressionAttributeValues: { ':id': idVal },
+      }))
+      const found = result.Items?.find(u => u.userType === 'student')
+      if (found) { user = found; break }
+    }
+
     if (!user) return res.status(404).json({ error: 'Not found' })
     res.json({ success: true, user })
   } catch (err) {
