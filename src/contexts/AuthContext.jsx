@@ -11,6 +11,7 @@ import { predictStudyScore, getRiskSubjects, simulateImprovement } from '../serv
 import { getStudentProfile } from '../utils/studentDataCollector'
 import { trackLogin, trackLogout } from '../services/userHistoryTracker'
 import { fetchUserFromDb, syncUserToDb } from '../services/userDbService'
+import { registerSession, isSessionValid } from '../services/sessionService'
 
 const AuthContext = createContext()
 
@@ -93,9 +94,24 @@ export const AuthProvider = ({ children }) => {
     init()
   }, [])
 
-  /**
-   * Initializes student profile and fetches AI predictions
-   */
+  // Periodic session validity check — logs out if another device took over
+  useEffect(() => {
+    if (!user?.email) return
+    const check = async () => {
+      const valid = await isSessionValid(user.email)
+      if (!valid) {
+        console.warn('Session invalidated — another device logged in')
+        setUser(null)
+        setPredictions(null)
+        logoutFromStorage()
+        alert('You have been logged out because your account was signed in on another device.')
+        window.location.href = '/login'
+      }
+    }
+    // Check every 2 minutes
+    const interval = setInterval(check, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [user?.email])
   const initializeStudentPredictions = async (userData) => {
     try {
       console.log('🤖 Initializing student predictions...')
@@ -181,6 +197,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('edulearn_last_email', userData.email)
     // Sync full profile to DynamoDB
     syncUserToDb(userData)
+    // Register this device as the active session (kicks out other devices)
+    registerSession(userData.email)
     console.log('AuthContext: User logged in successfully')
 
     // Track login activity

@@ -28,6 +28,30 @@ router.post('/', async (req, res) => {
   }
 });
 
+/** POST /api/users/session — record active session, kick out old device */
+router.post('/session', async (req, res) => {
+  try {
+    const { email, deviceId } = req.body;
+    if (!email || !deviceId) return res.status(400).json({ error: 'email and deviceId required' });
+    await updateUser(email, { activeDeviceId: deviceId, lastLoginAt: new Date().toISOString() });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** GET /api/users/session/:email/:deviceId — check if this device is still the active one */
+router.get('/session/:email/:deviceId', async (req, res) => {
+  try {
+    const user = await getUserByEmail(decodeURIComponent(req.params.email));
+    if (!user) return res.json({ valid: false });
+    const valid = !user.activeDeviceId || user.activeDeviceId === req.params.deviceId;
+    res.json({ valid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /** PATCH /api/users/:email — partial update */
 router.patch('/:email', async (req, res) => {
   try {
