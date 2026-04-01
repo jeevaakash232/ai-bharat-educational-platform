@@ -36,8 +36,20 @@ const resolveQuestionLanguage = (subject, user) => {
 const getUserSubjects = (user) => {
   const classNum = parseInt(user?.class) || 10
   const stateLanguage = user?.stateLanguage || 'Tamil'
-  const stream = user?.department || null
+  const stream = user?.department || user?.stream || null
+
+  // For class 11/12 with no stream set, use the subjects already saved on the profile
+  if ((classNum === 11 || classNum === 12) && !stream && user?.subjects?.length > 0) {
+    return user.subjects
+  }
+
   const subjects = getSubjectsForClass(classNum, stream, stateLanguage)
+
+  // If still only common subjects (no stream matched), fall back to profile subjects
+  if ((classNum === 11 || classNum === 12) && subjects.length <= 2 && user?.subjects?.length > 0) {
+    return user.subjects
+  }
+
   return subjects.map(s => s.name)
 }
 
