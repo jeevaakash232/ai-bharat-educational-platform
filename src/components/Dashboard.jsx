@@ -186,10 +186,24 @@ const Dashboard = () => {
           <div>
             {/* Monitor Student button — both teacher and parent */}
             <div style={{ marginBottom: 24 }}>
-              <button onClick={() => setShowMonitor(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', borderRadius: 14, background: 'var(--edu-gradient)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}>
-                <Search size={18} /> Monitor Student by ID
-              </button>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <button onClick={() => setShowMonitor(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', borderRadius: 14, background: 'var(--edu-gradient)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}>
+                  <Search size={18} /> Monitor Student by ID
+                </button>
+                {user.userType === 'teacher' && (
+                  <button onClick={async () => {
+                    const { getRegisteredUsers } = await import('../utils/authStorage')
+                    const { syncUserToDb } = await import('../services/userDbService')
+                    const users = getRegisteredUsers().filter(u => u.userType === 'student')
+                    await Promise.all(users.map(u => syncUserToDb(u)))
+                    alert(`Synced ${users.length} student(s) to cloud database.`)
+                  }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', borderRadius: 14, background: 'white', color: '#4f46e5', border: '2px solid #4f46e5', cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>
+                    <Users size={18} /> Sync Students to Cloud
+                  </button>
+                )}
+              </div>
               <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>Enter a student's unique ID or email to view their profile and subjects</p>
             </div>
 

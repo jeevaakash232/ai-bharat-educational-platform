@@ -16,19 +16,37 @@ const StudentMonitor = ({ onClose }) => {
       const q = query.trim()
       let found = null
 
-      // Try by email first (DynamoDB key)
       if (q.includes('@')) {
+        // Search by email
         const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(q)}`)
         if (res.ok) {
           const data = await res.json()
           if (data.user?.userType === 'student') found = data.user
         }
       } else {
-        // Search by numeric ID — scan all users and match by id field
+        // Search by numeric ID
         const res = await fetch(`${API_BASE_URL}/api/users/search/${encodeURIComponent(q)}`)
         if (res.ok) {
           const data = await res.json()
           found = data.user || null
+        }
+      }
+
+      // Fallback: search localStorage on this device (for users not yet synced to DynamoDB)
+      if (!found) {
+        const { getRegisteredUsers } = await import('../utils/authStorage')
+        const users = getRegisteredUsers()
+        found = users.find(u =>
+          u.userType === 'student' && (
+            u.email?.toLowerCase() === q.toLowerCase() ||
+            String(u.id) === q
+          )
+        ) || null
+
+        // If found locally, sync to DynamoDB now
+        if (found) {
+          const { syncUserToDb } = await import('../services/userDbService')
+          syncUserToDb(found)
         }
       }
 
