@@ -1,126 +1,50 @@
 /**
- * Notes Storage Service
- * Manages notes in localStorage (can be replaced with API calls)
+ * Notes Storage Service — DynamoDB backed via studentDataService
  */
+import { getData, saveData } from './studentDataService.js'
 
-const STORAGE_KEY = 'edulearn_notes';
+const DATA_TYPE = 'notes'
 
-/**
- * Get all notes for a student
- */
-export const getStudentNotes = (studentId) => {
+export const getStudentNotes = async (studentId) => {
   try {
-    const allNotes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    return allNotes[studentId] || [];
-  } catch (error) {
-    console.error('Error reading notes:', error);
-    return [];
-  }
-};
+    return await getData(studentId, DATA_TYPE, [])
+  } catch { return [] }
+}
 
-/**
- * Save a note
- */
-export const saveNote = (studentId, note) => {
+export const saveNote = async (studentId, note) => {
   try {
-    const allNotes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    
-    if (!allNotes[studentId]) {
-      allNotes[studentId] = [];
-    }
-    
-    // Check if note exists (update) or create new
-    const existingIndex = allNotes[studentId].findIndex(
-      n => n.id === note.id
-    );
-    
-    if (existingIndex !== -1) {
-      allNotes[studentId][existingIndex] = {
-        ...note,
-        updatedAt: new Date().toISOString()
-      };
+    const notes = await getStudentNotes(studentId)
+    const idx = notes.findIndex(n => n.id === note.id)
+    const now = new Date().toISOString()
+    if (idx !== -1) {
+      notes[idx] = { ...note, updatedAt: now }
     } else {
-      allNotes[studentId].push({
-        ...note,
-        id: note.id || Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+      notes.push({ ...note, id: note.id || Date.now().toString(), createdAt: now, updatedAt: now })
     }
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allNotes));
-    return true;
-  } catch (error) {
-    console.error('Error saving note:', error);
-    return false;
-  }
-};
+    saveData(studentId, DATA_TYPE, notes)
+    return true
+  } catch { return false }
+}
 
-/**
- * Get a specific note
- */
-export const getNote = (studentId, noteId) => {
-  const notes = getStudentNotes(studentId);
-  return notes.find(n => n.id === noteId);
-};
+export const getNote = async (studentId, noteId) => {
+  const notes = await getStudentNotes(studentId)
+  return notes.find(n => n.id === noteId)
+}
 
-/**
- * Get notes by source (book or ai-chat)
- */
-export const getNotesBySource = (studentId, sourceType, sourceId) => {
-  const notes = getStudentNotes(studentId);
-  return notes.filter(
-    n => n.sourceType === sourceType && n.sourceId === sourceId
-  );
-};
+export const getNotesBySource = async (studentId, sourceType, sourceId) => {
+  const notes = await getStudentNotes(studentId)
+  return notes.filter(n => n.sourceType === sourceType && n.sourceId === sourceId)
+}
 
-/**
- * Delete a note
- */
-export const deleteNote = (studentId, noteId) => {
+export const deleteNote = async (studentId, noteId) => {
   try {
-    const allNotes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    
-    if (allNotes[studentId]) {
-      allNotes[studentId] = allNotes[studentId].filter(n => n.id !== noteId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allNotes));
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error deleting note:', error);
-    return false;
-  }
-};
+    const notes = await getStudentNotes(studentId)
+    saveData(studentId, DATA_TYPE, notes.filter(n => n.id !== noteId))
+    return true
+  } catch { return false }
+}
 
-/**
- * Get notes by subject
- */
-export const getNotesBySubject = (studentId, subject) => {
-  const notes = getStudentNotes(studentId);
-  return notes.filter(n => n.subject === subject);
-};
-
-/**
- * Search notes
- */
-export const searchNotes = (studentId, searchTerm) => {
-  const notes = getStudentNotes(studentId);
-  const term = searchTerm.toLowerCase();
-  
-  return notes.filter(note => 
-    note.title?.toLowerCase().includes(term) ||
-    note.content?.toLowerCase().includes(term) ||
-    note.subject?.toLowerCase().includes(term)
-  );
-};
-
-export default {
-  getStudentNotes,
-  saveNote,
-  getNote,
-  getNotesBySource,
-  deleteNote,
-  getNotesBySubject,
-  searchNotes
-};
+export const getNotesBySubject = async (studentId, subject) => {
+  const notes = await getStudentNotes(studentId)
+  return notes.filter(n => n.subject === subject)
+}

@@ -17,6 +17,7 @@ import quizRouter from './routes/quiz.js';
 import aiRouter from './routes/ai.js';
 import usersRouter from './routes/users.js';
 import feedbackRouter from './routes/feedback.js';
+import studentDataRouter from './routes/studentData.js';
 import multer from 'multer';
 import { uploadBook } from './services/s3BooksService.js';
 
@@ -114,6 +115,7 @@ app.use('/api/quiz', quizRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/student-data', studentDataRouter);
 
 // Book upload route (separate endpoint for clarity)
 

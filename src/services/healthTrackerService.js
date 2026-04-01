@@ -1,55 +1,34 @@
-// Health Tracker Service - Local Storage Based
+// Health Tracker Service — DynamoDB backed via studentDataService
+import { getData, saveData } from './studentDataService.js'
 
-const STORAGE_KEY = 'health_tracker_data';
+const DATA_TYPE = 'health'
 
 export const saveHealthData = async (userId, data) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    
-    if (!allData[userId]) {
-      allData[userId] = [];
-    }
-    
-    // Check if today's entry exists
-    const existingIndex = allData[userId].findIndex(entry => entry.date === today);
-    
-    if (existingIndex >= 0) {
-      // Update existing entry
-      allData[userId][existingIndex] = {
-        date: today,
-        data,
-        timestamp: new Date().toISOString()
-      };
-    } else {
-      // Add new entry
-      allData[userId].push({
-        date: today,
-        data,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    // Sort by date descending
-    allData[userId].sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
-    return true;
-  } catch (error) {
-    console.error('Error saving health data:', error);
-    throw error;
+    const today = new Date().toISOString().split('T')[0]
+    const entries = await getData(userId, DATA_TYPE, [])
+
+    const idx = entries.findIndex(e => e.date === today)
+    const entry = { date: today, data, timestamp: new Date().toISOString() }
+    if (idx >= 0) entries[idx] = entry
+    else entries.push(entry)
+
+    entries.sort((a, b) => new Date(b.date) - new Date(a.date))
+    saveData(userId, DATA_TYPE, entries)
+    return true
+  } catch (err) {
+    console.error('Error saving health data:', err)
+    throw err
   }
-};
+}
 
 export const getHealthData = async (userId) => {
   try {
-    const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    return allData[userId] || [];
-  } catch (error) {
-    console.error('Error getting health data:', error);
-    return [];
+    return await getData(userId, DATA_TYPE, [])
+  } catch {
+    return []
   }
-};
+}
 
 export const calculateWellnessScore = (data) => {
   const { sleepHours, screenTime, studyHours, breakTime } = data;
